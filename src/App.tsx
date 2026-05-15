@@ -5,7 +5,7 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Github, 
@@ -402,7 +402,7 @@ function Home() {
       <footer className="py-12 border-t border-gray-50 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-gray-300 text-[10px] font-bold uppercase tracking-[0.3em]">
-            &copy; 2026 {settings.name} / Built with AI Studio
+            &copy; 2026 {settings.name}
           </div>
           <div className="flex gap-10 text-[10px] uppercase font-extrabold tracking-widest text-gray-200">
              <a href="#" className="hover:text-teal-500">Privacy Policy</a>
@@ -491,9 +491,9 @@ function Admin() {
           <p className="text-white/40 mb-10">Sign in with your authorized Google account to manage your portfolio.</p>
           <button 
             onClick={login}
-            className="w-full bg-white text-black font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-white/90 transition-colors"
+            className="w-full bg-[#EA4335] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-[#d33426] transition-colors shadow-lg shadow-red-500/20"
           >
-            <Github size={20} />
+            <Mail size={20} />
             Login with Google
           </button>
         </motion.div>
@@ -715,10 +715,40 @@ function AdminMessages() {
 
 // --- App Entry ---
 
+function AuthRedirect() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (user) => {
+      if (user && user.email === 'krishnan989756@gmail.com') {
+        if (location.pathname === '/') {
+          navigate('/admin');
+        }
+      } else if (!user && location.pathname === '/admin') {
+        // Stay on admin to show login UI or redirect to home? 
+        // User wants "/admin" to redirect to login if not authenticated.
+        // Currently /admin SHOWS the login UI, which is effectively a login page.
+      } else if (!user && location.pathname === '/') {
+        // User said: "If not authenticated, redirect to the login page."
+        // This implies the home page is now behind a login?
+        // Or did they mean when accessing /admin? 
+        // "Configure the application to redirect to the /admin page when the root URL is accessed, 
+        // if the user is already authenticated. If not authenticated, redirect to the login page."
+        // This suggests they want to force login altogether.
+        navigate('/admin');
+      }
+    });
+  }, [navigate, location.pathname]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <div className="font-sans">
+        <AuthRedirect />
         <AnimatePresence mode="wait">
           <Routes>
             <Route path="/" element={<PageTransition><Home /></PageTransition>} />
