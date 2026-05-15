@@ -112,7 +112,11 @@ function Nav() {
 
         <div className="hidden md:flex gap-10 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
           {["Home", "Works", "Experience", "Certificates", "Guestbook"].map((item) => (
-            <a key={item} href={`#${item.toLowerCase()}`} className="hover:text-[#141414] transition-colors">
+            <a 
+              key={item} 
+              href={window.location.pathname === '/' ? `#${item.toLowerCase()}` : `/#${item.toLowerCase()}`}
+              className="hover:text-[#141414] transition-colors"
+            >
               {item}
             </a>
           ))}
@@ -132,7 +136,12 @@ function Nav() {
           className="md:hidden bg-white p-6 flex flex-col gap-4 border-b border-gray-100"
         >
            {["Home", "Works", "Experience", "Certificates", "Guestbook"].map((item) => (
-              <a key={item} href={`#${item.toLowerCase()}`} onClick={() => setIsMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest">
+              <a 
+                key={item} 
+                href={window.location.pathname === '/' ? `#${item.toLowerCase()}` : `/#${item.toLowerCase()}`}
+                onClick={() => setIsMenuOpen(false)} 
+                className="text-sm font-bold uppercase tracking-widest"
+              >
                 {item}
               </a>
             ))}
@@ -428,6 +437,7 @@ function Home() {
             &copy; 2026 {settings.name}
           </div>
           <div className="flex gap-10 text-[10px] uppercase font-extrabold tracking-widest text-gray-200">
+             <Link to="/admin" className="hover:text-teal-500">Admin Panel</Link>
              <a href="#" className="hover:text-teal-500">Privacy Policy</a>
           </div>
         </div>
@@ -493,7 +503,11 @@ function Admin() {
   const [activeTab, setActiveTab] = useState("projects");
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => setUser(u));
+    console.log("Admin component mounted");
+    return onAuthStateChanged(auth, (u) => {
+      console.log("Auth state changed:", u ? u.email : "no-user");
+      setUser(u);
+    });
   }, []);
 
   const login = () => signInWithPopup(auth, new GoogleAuthProvider());
