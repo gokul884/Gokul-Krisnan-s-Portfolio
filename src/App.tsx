@@ -437,7 +437,6 @@ function Home() {
             &copy; 2026 {settings.name}
           </div>
           <div className="flex gap-10 text-[10px] uppercase font-extrabold tracking-widest text-gray-200">
-             <Link to="/admin" className="hover:text-teal-500">Admin Panel</Link>
              <a href="#" className="hover:text-teal-500">Privacy Policy</a>
           </div>
         </div>
@@ -500,18 +499,26 @@ function GuestbookForm() {
 
 function Admin() {
   const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("projects");
 
   useEffect(() => {
-    console.log("Admin component mounted");
     return onAuthStateChanged(auth, (u) => {
-      console.log("Auth state changed:", u ? u.email : "no-user");
       setUser(u);
+      setIsLoading(false);
     });
   }, []);
 
   const login = () => signInWithPopup(auth, new GoogleAuthProvider());
   const logout = () => signOut(auth);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
+        <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!user) {
     return (
