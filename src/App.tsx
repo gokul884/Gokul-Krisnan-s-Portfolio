@@ -111,7 +111,7 @@ function Nav() {
         </Link>
 
         <div className="hidden md:flex gap-10 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
-          {["Home", "Works", "Experience", "Guestbook"].map((item) => (
+          {["Home", "Works", "Experience", "Certificates", "Guestbook"].map((item) => (
             <a key={item} href={`#${item.toLowerCase()}`} className="hover:text-[#141414] transition-colors">
               {item}
             </a>
@@ -131,7 +131,7 @@ function Nav() {
           animate={{ opacity: 1, y: 0 }}
           className="md:hidden bg-white p-6 flex flex-col gap-4 border-b border-gray-100"
         >
-           {["Home", "Works", "Experience", "Guestbook"].map((item) => (
+           {["Home", "Works", "Experience", "Certificates", "Guestbook"].map((item) => (
               <a key={item} href={`#${item.toLowerCase()}`} onClick={() => setIsMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest">
                 {item}
               </a>
@@ -159,6 +159,7 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [messages, setMessages] = useState<GuestMessage[]>([]);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
 
@@ -167,15 +168,15 @@ function Home() {
       setProjects(snap.docs.map(d => ({ id: d.id, ...d.data() } as Project)));
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'projects'));
 
-    const unsubMessages = onSnapshot(query(collection(db, "guestbook"), orderBy("timestamp", "desc")), (snap) => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() } as GuestMessage)));
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'guestbook'));
+    const unsubCerts = onSnapshot(query(collection(db, "certificates"), orderBy("issueDate", "desc")), (snap) => {
+      setCertificates(snap.docs.map(d => ({ id: d.id, ...d.data() } as Certificate)));
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'certificates'));
 
     const unsubSettings = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) setSettings(snap.data() as SiteSettings);
     });
 
-    return () => { unsubProjects(); unsubMessages(); unsubSettings(); };
+    return () => { unsubProjects(); unsubCerts(); unsubSettings(); };
   }, []);
 
   return (
@@ -346,36 +347,58 @@ function Home() {
         </div>
       </section>
 
+      {/* Certificates Section */}
+      <section id="certificates" className="py-32 px-6 bg-[#fafafa]">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-5xl font-display font-bold mb-4">Certifications</h2>
+            <p className="text-gray-400 font-medium">Validating my expertise through global standards</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {certificates.map((cert) => (
+              <motion.div 
+                key={cert.id}
+                whileHover={{ scale: 1.02 }}
+                className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all"
+              >
+                <div className="aspect-video bg-gray-50 rounded-2xl mb-6 overflow-hidden relative group">
+                  {cert.imageUrl ? (
+                    <img src={cert.imageUrl} alt={cert.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-200">
+                      <ExternalLink size={40} className="opacity-20" />
+                    </div>
+                  )}
+                  <div className="absolute inset-x-4 bottom-4 translate-y-full group-hover:translate-y-0 transition-transform">
+                     <div className="bg-teal-500 text-white text-[10px] font-bold uppercase py-2 px-4 rounded-full text-center">
+                        Verified Credentials
+                     </div>
+                  </div>
+                </div>
+                <h3 className="font-bold text-lg mb-1 leading-tight">{cert.title}</h3>
+                <div className="text-teal-600 text-xs font-bold uppercase tracking-widest mb-4">{cert.provider}</div>
+                <div className="text-gray-300 text-[10px] font-bold">{cert.issueDate || "Date N/A"}</div>
+              </motion.div>
+            ))}
+            {certificates.length === 0 && (
+               <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-200 rounded-[3rem] text-gray-300 font-medium italic">
+                Wait for it... certificates are being uploaded!
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Guestbook Hub */}
       <section id="guestbook" className="py-32 px-6 bg-[#fafafa]">
-        <div className="max-w-4xl mx-auto text-center mb-16">
+        <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-5xl font-display font-bold mb-8 leading-tight">Digital Connections</h2>
           <p className="text-gray-400 mb-10 leading-relaxed font-medium mx-auto max-w-lg">
             Leave a message for the gallery. Let's start a conversation about Digital Marketing, Tech, or MBA life.
           </p>
           <div className="max-w-3xl mx-auto">
             <GuestbookForm />
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[700px] overflow-y-auto pr-4 custom-scrollbar">
-            {messages.map((msg) => (
-              <div key={msg.id} className="p-10 bg-white border border-gray-100 rounded-[2rem] hover:shadow-xl transition-all relative">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-10 h-10 bg-teal-50 rounded-full flex items-center justify-center text-teal-600 font-bold">
-                    {msg.userName[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="font-bold">@{msg.userName}</div>
-                    <div className="text-[10px] text-gray-300 uppercase font-bold tracking-widest">
-                       {msg.timestamp?.toDate ? formatDate(msg.timestamp.toDate()) : "Recent"}
-                    </div>
-                  </div>
-                </div>
-                <p className="text-gray-500 leading-relaxed text-sm italic">"{msg.message}"</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -549,10 +572,106 @@ function Admin() {
             exit={{ opacity: 0, x: -20 }}
           >
             {activeTab === 'projects' && <AdminProjects />}
+            {activeTab === 'certificates' && <AdminCertificates />}
             {activeTab === 'settings' && <AdminSettings />}
             {activeTab === 'messages' && <AdminMessages />}
           </motion.div>
         </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function AdminCertificates() {
+  const [certs, setCerts] = useState<Certificate[]>([]);
+  const [editing, setEditing] = useState<Partial<Certificate> | null>(null);
+
+  useEffect(() => {
+    return onSnapshot(query(collection(db, "certificates"), orderBy("issueDate", "desc")), (snap) => {
+      setCerts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Certificate)));
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'certificates'));
+  }, []);
+
+  const save = async () => {
+    if (!editing?.title || !editing?.provider) return;
+    try {
+      if (editing.id) {
+        await updateDoc(doc(db, "certificates", editing.id), editing);
+      } else {
+        await addDoc(collection(db, "certificates"), { ...editing, createdAt: serverTimestamp() });
+      }
+      setEditing(null);
+    } catch (err) { handleFirestoreError(err, OperationType.WRITE, 'certificates'); }
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm('Are you sure?')) return;
+    try { await deleteDoc(doc(db, "certificates", id)); } 
+    catch (err) { handleFirestoreError(err, OperationType.DELETE, 'certificates'); }
+  };
+
+  return (
+    <div className="space-y-8">
+      <button 
+        onClick={() => setEditing({ title: "", provider: "", issueDate: "", imageUrl: "" })}
+        className="w-full p-8 border-2 border-dashed border-white/10 rounded-3xl flex items-center justify-center gap-2 text-white/40 hover:text-white hover:border-teal-500 transition-all font-bold"
+      >
+        <Plus /> Add New Certificate
+      </button>
+
+      {editing && (
+        <div className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6">
+          <input 
+            placeholder="Certificate Title" 
+            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
+            value={editing.title}
+            onChange={e => setEditing({...editing, title: e.target.value})}
+          />
+          <input 
+            placeholder="Provider (e.g. Google, HubSpot)" 
+            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
+            value={editing.provider}
+            onChange={e => setEditing({...editing, provider: e.target.value})}
+          />
+          <div className="grid md:grid-cols-2 gap-4">
+            <input 
+              placeholder="Issue Date (e.g. May 2024)" 
+              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
+              value={editing.issueDate}
+              onChange={e => setEditing({...editing, issueDate: e.target.value})}
+            />
+            <input 
+              placeholder="Image/File URL" 
+              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
+              value={editing.imageUrl}
+              onChange={e => setEditing({...editing, imageUrl: e.target.value})}
+            />
+          </div>
+          <div className="flex gap-4">
+            <button onClick={save} className="flex-1 bg-teal-500 text-black font-bold py-4 rounded-xl">Save Certificate</button>
+            <button onClick={() => setEditing(null)} className="flex-1 bg-white/5 font-bold py-4 rounded-xl">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-4">
+        {certs.map(c => (
+          <div key={c.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
+             <div className="flex items-center gap-4">
+               <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center">
+                 {c.imageUrl ? <img src={c.imageUrl} className="w-full h-full object-cover rounded-lg" /> : <Briefcase size={20} className="opacity-20" />}
+               </div>
+               <div>
+                 <h4 className="font-bold">{c.title}</h4>
+                 <p className="text-xs text-teal-600 uppercase font-bold tracking-widest">{c.provider}</p>
+               </div>
+             </div>
+             <div className="flex gap-2">
+               <button onClick={() => setEditing(c)} className="p-2 text-white/40 hover:text-teal-500"><Edit size={16} /></button>
+               <button onClick={() => remove(c.id)} className="p-2 text-white/40 hover:text-red-500"><Trash2 size={16} /></button>
+             </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -565,7 +684,7 @@ function AdminProjects() {
   useEffect(() => {
     return onSnapshot(query(collection(db, "projects"), orderBy("order")), (snap) => {
       setProjects(snap.docs.map(d => ({ id: d.id, ...d.data() } as Project)));
-    });
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'projects'));
   }, []);
 
   const save = async () => {
@@ -641,7 +760,7 @@ function AdminSettings() {
   useEffect(() => {
     getDoc(doc(db, "settings", "global")).then(snap => {
       if (snap.exists()) setSettings(snap.data() as SiteSettings);
-    });
+    }).catch(err => handleFirestoreError(err, OperationType.GET, 'settings/global'));
   }, []);
 
   const save = async () => {
@@ -690,12 +809,16 @@ function AdminMessages() {
   useEffect(() => {
     return onSnapshot(query(collection(db, "guestbook"), orderBy("timestamp", "desc")), (snap) => {
       setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() } as GuestMessage)));
-    });
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'guestbook'));
   }, []);
 
   const remove = async (id: string) => {
     if (!confirm('Remove this message?')) return;
-    await deleteDoc(doc(db, "guestbook", id));
+    try {
+      await deleteDoc(doc(db, "guestbook", id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, 'guestbook');
+    }
   };
 
   return (
@@ -715,40 +838,10 @@ function AdminMessages() {
 
 // --- App Entry ---
 
-function AuthRedirect() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, (user) => {
-      if (user && user.email === 'krishnan989756@gmail.com') {
-        if (location.pathname === '/') {
-          navigate('/admin');
-        }
-      } else if (!user && location.pathname === '/admin') {
-        // Stay on admin to show login UI or redirect to home? 
-        // User wants "/admin" to redirect to login if not authenticated.
-        // Currently /admin SHOWS the login UI, which is effectively a login page.
-      } else if (!user && location.pathname === '/') {
-        // User said: "If not authenticated, redirect to the login page."
-        // This implies the home page is now behind a login?
-        // Or did they mean when accessing /admin? 
-        // "Configure the application to redirect to the /admin page when the root URL is accessed, 
-        // if the user is already authenticated. If not authenticated, redirect to the login page."
-        // This suggests they want to force login altogether.
-        navigate('/admin');
-      }
-    });
-  }, [navigate, location.pathname]);
-
-  return null;
-}
-
 export default function App() {
   return (
     <BrowserRouter>
       <div className="font-sans">
-        <AuthRedirect />
         <AnimatePresence mode="wait">
           <Routes>
             <Route path="/" element={<PageTransition><Home /></PageTransition>} />

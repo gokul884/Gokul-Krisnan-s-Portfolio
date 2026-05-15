@@ -31,9 +31,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Certificates
+    match /certificates/{certId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Guestbook
     match /guestbook/{messageId} {
-      allow read: if true;
+      allow read: if isAdmin();
       allow create: if true 
         && request.resource.data.keys().hasAll(['userName', 'message', 'timestamp'])
         && request.resource.data.userName is string
