@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'krishnan989756@gmail.com' && 
+        request.auth.token.email_verified == true
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['title', 'description', 'order']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.order is number &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000)) &&
+             (!('liveUrl' in data) || (data.liveUrl is string && data.liveUrl.size() <= 1000)) &&
+             (!('githubUrl' in data) || (data.githubUrl is string && data.githubUrl.size() <= 1000));
+    }
+
+    function isValidCertificate(data) {
+      return data.keys().hasAll(['title', 'provider']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.provider is string && data.provider.size() <= 200;
+    }
+
+    function isValidGuestbookMessage(data) {
+      return data.keys().hasAll(['userName', 'message', 'timestamp']) &&
+             data.userName is string && data.userName.size() <= 100 &&
+             data.message is string && data.message.size() <= 1000 &&
+             data.timestamp == request.time;
+    }
+
+    // --- Resources ---
+
+    match /projects/{projectId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidProject(incoming());
+      allow update: if isAdmin() && isValidProject(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'imageUrl', 'liveUrl', 'githubUrl', 'techStack', 'order'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /certificates/{certId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidCertificate(incoming());
+      allow update: if isAdmin() && isValidCertificate(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /guestbook/{messageId} {
+      allow read: if true;
+      allow create: if isValidGuestbookMessage(incoming());
+      allow delete: if isAdmin();
+      allow update: if false; // Messages are immutable
+    }
+
+    match /settings/global {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

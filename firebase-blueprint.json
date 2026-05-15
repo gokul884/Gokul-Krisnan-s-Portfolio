@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "project": {
+      "title": "Project",
+      "description": "A portfolio project showcasing skills",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "liveUrl": { "type": "string" },
+        "githubUrl": { "type": "string" },
+        "techStack": { "type": "array" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "order"]
+    },
+    "certificate": {
+      "title": "Certificate",
+      "description": "Professional certifications and courses",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "provider": { "type": "string" },
+        "issueDate": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "provider"]
+    },
+    "guestbookMessage": {
+      "title": "Guestbook Message",
+      "description": "Visitor messages",
+      "type": "object",
+      "properties": {
+        "userName": { "type": "string" },
+        "message": { "type": "string" },
+        "signature": { "type": "string", "description": "SVG path or base64 string for signature" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userName", "message", "timestamp"]
+    },
+    "siteSettings": {
+      "title": "Site Settings",
+      "description": "Global settings for the portfolio",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "bio": { "type": "string" },
+        "profileImageUrl": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "location": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "projects": {
+      "schema": "project",
+      "description": "List of projects"
+    },
+    "certificates": {
+      "schema": "certificate",
+      "description": "List of certifications"
+    },
+    "guestbook": {
+      "schema": "guestbookMessage",
+      "description": "Visitor guestbook entries"
+    },
+    "settings/global": {
+      "schema": "siteSettings",
+      "description": "Global configurations"
+    }
+  }
+}
