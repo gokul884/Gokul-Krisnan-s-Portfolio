@@ -7,15 +7,50 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == 'krishnan989756@gmail.com' && request.auth.token.email_verified == true;
+      return isSignedIn() && 
+             request.auth.token.email == 'krishnan989756@gmail.com' && 
+             request.auth.token.email_verified == true;
     }
 
     function incoming() {
       return request.resource.data;
     }
 
+    function existing() {
+      return resource.data;
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Entity Validations ---
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['title', 'description', 'order']) &&
+             data.title is string && data.title.size() > 0 &&
+             data.description is string && data.description.size() > 0 &&
+             data.order is number;
+    }
+
+    function isValidCertificate(data) {
+      return data.keys().hasAll(['title', 'provider']) &&
+             data.title is string && data.title.size() > 0 &&
+             data.provider is string && data.provider.size() > 0;
+    }
+
+    function isValidExperience(data) {
+      return data.keys().hasAll(['year', 'title', 'company', 'description', 'order']) &&
+             data.year is string &&
+             data.title is string &&
+             data.company is string &&
+             data.order is number;
+    }
+
+    function isValidGuestMessage(data) {
+      return data.keys().hasAll(['userName', 'message']) &&
+             data.userName is string && data.userName.size() > 0 &&
+             data.message is string && data.message.size() > 0;
     }
 
     // Default deny
@@ -26,19 +61,22 @@ service cloud.firestore {
     // projects collection
     match /projects/{projectId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() && isValidProject(incoming());
+      allow delete: if isAdmin();
     }
 
     // certificates collection
     match /certificates/{certId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() && isValidCertificate(incoming());
+      allow delete: if isAdmin();
     }
 
     // experiences collection
     match /experiences/{expId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() && isValidExperience(incoming());
+      allow delete: if isAdmin();
     }
 
     // settings collection
@@ -49,12 +87,10 @@ service cloud.firestore {
 
     // guestbook collection
     match /guestbook/{messageId} {
-      // Admin can see all messages
+      // Admin can see all messages (list/get) and delete them
       allow get, list, delete: if isAdmin();
       // Anyone can leave a message
-      allow create: if 
-        incoming().userName is string && incoming().userName.size() > 0 &&
-        incoming().message is string && incoming().message.size() > 0;
+      allow create: if isValidGuestMessage(incoming());
       // No updates to messages allowed by anyone
       allow update: if false;
     }

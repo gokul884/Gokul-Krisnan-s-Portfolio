@@ -173,6 +173,106 @@ function PageTransition({ children }: { children: React.ReactNode }) {
   );
 }
 
+// --- Helper Components ---
+
+function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) => void, currentUrl?: string, label: string }) {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      alert("Please select an image file.");
+      return;
+    }
+
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      alert("Cloudinary not configured. Please add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET to settings/environment.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', uploadPreset);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Failed to upload to Cloudinary');
+      }
+
+      const data = await response.json();
+      onUpload(data.secure_url);
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      alert(`Upload failed: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414] ml-2">{label}</label>
+      <div className="flex items-center gap-6 p-6 bg-white border border-gray-100 rounded-3xl shadow-sm">
+        <div 
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          className={cn(
+            "w-24 h-24 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-teal-500 hover:bg-teal-50 transition-all group",
+            uploading && "opacity-50 cursor-wait"
+          )}
+        >
+          {uploading ? (
+            <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <>
+              <Plus size={20} className="text-gray-300 group-hover:text-teal-500" />
+              <span className="text-[8px] font-bold uppercase tracking-tight text-gray-400 group-hover:text-teal-500">Pick Photo</span>
+            </>
+          )}
+        </div>
+        
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+          accept="image/*"
+        />
+
+        {currentUrl ? (
+          <div className="flex-1 space-y-2">
+            <div className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">Image Loaded</div>
+            <div className="h-12 w-full bg-gray-50 rounded-xl overflow-hidden border border-gray-100 flex items-center px-4">
+               <span className="text-[10px] text-gray-400 truncate font-mono">{currentUrl}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1">
+            <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No file selected</div>
+            <p className="text-[10px] text-gray-400 mt-1">Tap the plus icon to upload from your gallery.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // --- Main Pages ---
 
 function Home() {
@@ -753,12 +853,10 @@ function AdminCertificates() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Image/URL</label>
-              <input 
-                placeholder="URL to image or PDF" 
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors"
-                value={editing.imageUrl}
-                onChange={e => setEditing({...editing, imageUrl: e.target.value})}
+              <FileUpload 
+                label="Certificate Image" 
+                currentUrl={editing.imageUrl} 
+                onUpload={(url) => setEditing({...editing, imageUrl: url})} 
               />
             </div>
           </div>
@@ -861,26 +959,29 @@ function AdminProjects() {
                 />
               </div>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414]">Visuals & Assets</label>
-              <input 
-                placeholder="Featured Image URL" 
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
-                value={editing.imageUrl || ""}
-                onChange={e => setEditing({...editing, imageUrl: e.target.value})}
+              <FileUpload 
+                label="Featured Project Hero Image" 
+                currentUrl={editing.imageUrl} 
+                onUpload={(url) => setEditing({...editing, imageUrl: url})} 
               />
-              <input 
-                placeholder="Live View URL" 
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
-                value={editing.liveUrl || ""}
-                onChange={e => setEditing({...editing, liveUrl: e.target.value})}
-              />
-              <input 
-                placeholder="Repository Link (Optional)" 
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
-                value={editing.githubUrl || ""}
-                onChange={e => setEditing({...editing, githubUrl: e.target.value})}
-              />
+              <div className="space-y-2">
+                <input 
+                  placeholder="Live View URL" 
+                  className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                  value={editing.liveUrl || ""}
+                  onChange={e => setEditing({...editing, liveUrl: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <input 
+                  placeholder="Repository Link (Optional)" 
+                  className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                  value={editing.githubUrl || ""}
+                  onChange={e => setEditing({...editing, githubUrl: e.target.value})}
+                />
+              </div>
             </div>
           </div>
           <div className="flex gap-4 pt-4 border-t border-gray-200">
@@ -1090,17 +1191,16 @@ function AdminSettings() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Profile Avatar URL</label>
-              <input 
-                value={settings.profileImageUrl} 
-                onChange={e => setSettings({...settings, profileImageUrl: e.target.value})}
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+              <FileUpload 
+                label="Profile Avatar" 
+                currentUrl={settings.profileImageUrl} 
+                onUpload={(url) => setSettings({...settings, profileImageUrl: url})} 
               />
-              <div className="mt-4 flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="mt-4 flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 italic">
                 <div className="w-16 h-16 bg-white rounded-full overflow-hidden border border-gray-100 shadow-sm">
                   <img src={settings.profileImageUrl} className="w-full h-full object-cover" />
                 </div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Preview of current profile photo</div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live circular preview of your active photo</div>
               </div>
             </div>
           </div>
