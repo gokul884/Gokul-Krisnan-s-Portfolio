@@ -46,6 +46,8 @@ import {
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider, 
   signOut 
 } from "firebase/auth";
@@ -516,14 +518,43 @@ function Admin() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("projects");
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setIsLoading(false);
     });
+
+    getRedirectResult(auth).catch((err: any) => {
+      console.error("Redirect sign-in error:", err);
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError(err.message);
+      }
+    });
+
+    return unsub;
   }, []);
 
-  const login = () => signInWithPopup(auth, new GoogleAuthProvider());
+  const loginWithPopup = async () => {
+    setError(null);
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (err: any) {
+      console.error("Login popup error:", err);
+      if (err.code === 'auth/popup-blocked') {
+        setError("Popup was blocked by your browser. Please allow popups or use Redirect login.");
+      } else {
+        setError(err.message || "Failed to sign in.");
+      }
+    }
+  };
+
+  const loginWithRedirect = () => {
+    setError(null);
+    signInWithRedirect(auth, new GoogleAuthProvider());
+  };
+
   const logout = () => signOut(auth);
 
   if (isLoading) {
@@ -546,14 +577,30 @@ function Admin() {
             <LogIn size={40} className="text-black" />
           </div>
           <h2 className="text-3xl font-display font-bold text-white mb-4">Admin Access</h2>
-          <p className="text-white/40 mb-10">Sign in with your authorized Google account to manage your portfolio.</p>
-          <button 
-            onClick={login}
-            className="w-full bg-[#EA4335] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-[#d33426] transition-colors shadow-lg shadow-red-500/20"
-          >
-            <Mail size={20} />
-            Login with Google
-          </button>
+          <p className="text-white/40 mb-6">Sign in with your authorized Google account to manage your portfolio.</p>
+          
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-bold">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <button 
+              onClick={loginWithPopup}
+              className="w-full bg-[#EA4335] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-[#d33426] transition-colors shadow-lg shadow-red-500/20"
+            >
+              <Mail size={20} />
+              Login with Google Popup
+            </button>
+            <button 
+              onClick={loginWithRedirect}
+              className="w-full bg-white text-[#141414] border border-gray-200 font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
+            >
+              <ExternalLink size={20} />
+              Login with Google Redirect
+            </button>
+          </div>
         </motion.div>
       </div>
     );
@@ -574,24 +621,32 @@ function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#fdfdfd] text-[#141414]">
       <Nav />
       <div className="max-w-7xl mx-auto px-6 pt-32 pb-20">
-        <div className="flex justify-between items-center mb-12">
-          <h1 className="text-4xl font-display font-bold">Admin Dashboard</h1>
-          <button onClick={logout} className="flex items-center gap-2 text-white/40 hover:text-white">
-            <LogOut size={16} /> Logout
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+          <div>
+            <h1 className="text-5xl font-display font-bold tracking-tighter italic">Admin Dashboard</h1>
+            <p className="text-gray-400 font-medium mt-2">Manage your professional presence</p>
+          </div>
+          <button 
+            onClick={logout} 
+            className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#141414] bg-white border border-gray-100 px-6 py-3 rounded-full hover:bg-gray-50 transition-all shadow-sm"
+          >
+            <LogOut size={14} /> Logout
           </button>
         </div>
 
-        <div className="flex gap-4 mb-12 overflow-x-auto pb-2">
+        <div className="flex gap-4 mb-12 overflow-x-auto pb-4 no-scrollbar">
           {["projects", "certificates", "experience", "settings", "messages"].map(tab => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                "px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap",
-                activeTab === tab ? "bg-teal-500 text-black shadow-lg shadow-teal-500/20" : "bg-white/5 text-white/40 hover:text-white"
+                "px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] transition-all whitespace-nowrap",
+                activeTab === tab 
+                  ? "bg-[#141414] text-white shadow-xl shadow-gray-200" 
+                  : "bg-white text-gray-400 border border-gray-100 hover:text-[#141414]"
               )}
             >
               {tab}
@@ -605,6 +660,7 @@ function Admin() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
+            className="bg-white border border-gray-100 p-8 md:p-12 rounded-[2.5rem] shadow-sm"
           >
             {activeTab === 'projects' && <AdminProjects />}
             {activeTab === 'certificates' && <AdminCertificates />}
@@ -650,69 +706,84 @@ function AdminCertificates() {
     <div className="space-y-8">
       <button 
         onClick={() => setEditing({ title: "", provider: "", issueDate: "", imageUrl: "" })}
-        className="w-full p-8 border-2 border-dashed border-white/10 rounded-3xl flex items-center justify-center gap-2 text-white/40 hover:text-white hover:border-teal-500 transition-all font-bold"
+        className="w-full p-12 border-2 border-dashed border-gray-100 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-gray-300 hover:text-teal-500 hover:border-teal-100 transition-all group"
       >
-        <Plus /> Add New Certificate
+        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-teal-50 transition-colors">
+          <Plus size={24} />
+        </div>
+        <span className="text-xs font-bold uppercase tracking-widest">Add New Certificate</span>
       </button>
 
       {editing && (
         <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-8 bg-gray-50 rounded-3xl space-y-6 border border-gray-100 shadow-inner"
         >
-          <div className="grid md:grid-cols-2 gap-4">
-            <input 
-              placeholder="Certificate Title" 
-              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-              value={editing.title}
-              onChange={e => setEditing({...editing, title: e.target.value})}
-            />
-            <input 
-              placeholder="Provider (e.g. Google, HubSpot)" 
-              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-              value={editing.provider}
-              onChange={e => setEditing({...editing, provider: e.target.value})}
-            />
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Certificate Title</label>
+              <input 
+                placeholder="e.g. Advanced Digital Marketing" 
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors"
+                value={editing.title}
+                onChange={e => setEditing({...editing, title: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Provider</label>
+              <input 
+                placeholder="e.g. Google Academy" 
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors"
+                value={editing.provider}
+                onChange={e => setEditing({...editing, provider: e.target.value})}
+              />
+            </div>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <input 
-              placeholder="Issue Date (e.g. May 2024)" 
-              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-              value={editing.issueDate}
-              onChange={e => setEditing({...editing, issueDate: e.target.value})}
-            />
-            <input 
-              placeholder="Image/File URL" 
-              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-              value={editing.imageUrl}
-              onChange={e => setEditing({...editing, imageUrl: e.target.value})}
-            />
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Issue Date</label>
+              <input 
+                placeholder="e.g. May 2024" 
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors"
+                value={editing.issueDate}
+                onChange={e => setEditing({...editing, issueDate: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Image/URL</label>
+              <input 
+                placeholder="URL to image or PDF" 
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors"
+                value={editing.imageUrl}
+                onChange={e => setEditing({...editing, imageUrl: e.target.value})}
+              />
+            </div>
           </div>
-          <div className="flex gap-4">
-            <button onClick={save} className="flex-1 bg-teal-500 text-black font-bold py-4 rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2">
+          <div className="flex gap-4 pt-4">
+            <button onClick={save} className="flex-1 bg-[#141414] text-white font-bold py-5 rounded-2xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 shadow-lg">
               <Save size={18} /> Save Certificate
             </button>
-            <button onClick={() => setEditing(null)} className="flex-1 bg-white/5 font-bold py-4 rounded-xl hover:bg-white/10 transition-all">Cancel</button>
+            <button onClick={() => setEditing(null)} className="flex-1 bg-white text-[#141414] font-bold py-5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all">Cancel</button>
           </div>
         </motion.div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-2 gap-6">
         {certs.map(c => (
-          <div key={c.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5 group hover:border-white/10 transition-all">
+          <div key={c.id} className="p-6 bg-white rounded-2xl flex justify-between items-center border border-gray-100 group hover:border-teal-100 transition-all shadow-sm">
              <div className="flex items-center gap-4">
-               <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 overflow-hidden">
-                 {c.imageUrl ? <img src={c.imageUrl} className="w-full h-full object-cover" /> : <Briefcase size={20} className="opacity-10" />}
+               <div className="w-14 h-14 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 overflow-hidden shrink-0">
+                 {c.imageUrl ? <img src={c.imageUrl} className="w-full h-full object-cover" /> : <Briefcase size={24} className="text-gray-200" />}
                </div>
                <div>
-                 <h4 className="font-bold">{c.title}</h4>
-                 <p className="text-xs text-teal-600 uppercase font-bold tracking-widest">{c.provider}</p>
+                 <h4 className="font-bold text-[#141414]">{c.title}</h4>
+                 <p className="text-[10px] text-teal-600 uppercase font-bold tracking-widest mt-1">{c.provider}</p>
                </div>
              </div>
-             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-               <button onClick={() => setEditing(c)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-teal-500 transition-all"><Edit size={16} /></button>
-               <button onClick={() => remove(c.id)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
+             <div className="flex gap-2">
+               <button onClick={() => setEditing(c)} className="p-3 bg-gray-50 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-xl transition-all"><Edit size={16} /></button>
+               <button onClick={() => remove(c.id)} className="p-3 bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
              </div>
           </div>
         ))}
@@ -753,80 +824,89 @@ function AdminProjects() {
     <div className="space-y-8">
       <button 
         onClick={() => setEditing({ title: "", description: "", order: projects.length, imageUrl: "", liveUrl: "", githubUrl: "", techStack: [] })}
-        className="w-full p-8 border-2 border-dashed border-white/10 rounded-3xl flex items-center justify-center gap-2 text-white/40 hover:text-white hover:border-teal-500 transition-all font-bold"
+        className="w-full p-12 border-2 border-dashed border-gray-100 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-gray-300 hover:text-teal-500 hover:border-teal-100 transition-all group"
       >
-        <Plus size={20} /> Add New Project
+        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-teal-50 transition-colors">
+          <Plus size={24} />
+        </div>
+        <span className="text-xs font-bold uppercase tracking-widest">Add New Project</span>
       </button>
 
       {editing && (
         <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-8 bg-gray-50 rounded-3xl space-y-8 border border-gray-100 shadow-inner"
         >
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-white/30">Basic Info</label>
-              <input 
-                placeholder="Project Title" 
-                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-                value={editing.title}
-                onChange={e => setEditing({...editing, title: e.target.value})}
-              />
-              <textarea 
-                placeholder="Description" 
-                rows={4}
-                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors resize-none"
-                value={editing.description}
-                onChange={e => setEditing({...editing, description: e.target.value})}
-              />
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414]">Basic Information</label>
+              <div className="space-y-2">
+                <input 
+                  placeholder="Project Title" 
+                  className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                  value={editing.title}
+                  onChange={e => setEditing({...editing, title: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <textarea 
+                  placeholder="Compelling description of the work" 
+                  rows={6}
+                  className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors resize-none shadow-sm"
+                  value={editing.description}
+                  onChange={e => setEditing({...editing, description: e.target.value})}
+                />
+              </div>
             </div>
             <div className="space-y-4">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-white/30">Media & Links</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414]">Visuals & Assets</label>
               <input 
-                placeholder="Image URL" 
-                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+                placeholder="Featured Image URL" 
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
                 value={editing.imageUrl || ""}
                 onChange={e => setEditing({...editing, imageUrl: e.target.value})}
               />
               <input 
-                placeholder="Live URL" 
-                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+                placeholder="Live View URL" 
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
                 value={editing.liveUrl || ""}
                 onChange={e => setEditing({...editing, liveUrl: e.target.value})}
               />
               <input 
-                placeholder="Github URL" 
-                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+                placeholder="Repository Link (Optional)" 
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
                 value={editing.githubUrl || ""}
                 onChange={e => setEditing({...editing, githubUrl: e.target.value})}
               />
             </div>
           </div>
-          <div className="flex gap-4">
-            <button onClick={save} className="flex-1 bg-teal-500 text-black font-bold py-4 rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2">
-              <Save size={18} /> Save Project
+          <div className="flex gap-4 pt-4 border-t border-gray-200">
+            <button onClick={save} className="flex-1 bg-[#141414] text-white font-bold py-5 rounded-2xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 shadow-xl">
+              <Save size={18} /> Save Project Entity
             </button>
-            <button onClick={() => setEditing(null)} className="flex-1 bg-white/5 font-bold py-4 rounded-xl hover:bg-white/10 transition-all">Cancel</button>
+            <button onClick={() => setEditing(null)} className="flex-1 bg-white text-[#141414] font-bold py-5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all">Cancel</button>
           </div>
         </motion.div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-2 gap-8">
         {projects.map(p => (
-          <div key={p.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5 group hover:border-white/10 transition-all">
-             <div className="flex items-center gap-4">
-               <div className="w-16 h-16 bg-white/5 rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
-                 {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : <Cpu size={24} className="opacity-10" />}
+          <div key={p.id} className="p-8 bg-white rounded-3xl flex justify-between items-center border border-gray-100 group hover:border-teal-100 transition-all shadow-sm">
+             <div className="flex items-center gap-6">
+               <div className="w-20 h-20 bg-gray-50 rounded-2xl overflow-hidden flex items-center justify-center border border-gray-100 shrink-0">
+                 {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : <Cpu size={32} className="text-gray-200" />}
                </div>
                <div>
-                 <h4 className="font-bold text-lg">{p.title}</h4>
-                 <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Order: {p.order}</p>
+                 <h4 className="font-bold text-xl text-[#141414] mb-1">{p.title}</h4>
+                 <div className="flex items-center gap-2">
+                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Priority: {p.order}</span>
+                 </div>
                </div>
              </div>
-             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-               <button onClick={() => setEditing(p)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-teal-500 transition-all"><Edit size={16} /></button>
-               <button onClick={() => remove(p.id)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
+             <div className="flex flex-col gap-2">
+               <button onClick={() => setEditing(p)} className="p-3 bg-gray-50 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-xl transition-all"><Edit size={16} /></button>
+               <button onClick={() => remove(p.id)} className="p-3 bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
              </div>
           </div>
         ))}
@@ -867,63 +947,78 @@ function AdminExperience() {
     <div className="space-y-8">
       <button 
         onClick={() => setEditing({ title: "", company: "", year: "", description: "", order: experiences.length })}
-        className="w-full p-8 border-2 border-dashed border-white/10 rounded-3xl flex items-center justify-center gap-2 text-white/40 hover:text-white hover:border-teal-500 transition-all font-bold"
+        className="w-full p-12 border-2 border-dashed border-gray-100 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-gray-300 hover:text-teal-500 hover:border-teal-100 transition-all group"
       >
-        <Plus size={20} /> Add New Experience
+        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-teal-50 transition-colors">
+          <Plus size={24} />
+        </div>
+        <span className="text-xs font-bold uppercase tracking-widest">Add New Experience Entry</span>
       </button>
 
       {editing && (
         <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-8 bg-gray-50 rounded-3xl space-y-6 border border-gray-100 shadow-inner"
         >
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Job Title / Role</label>
+              <input 
+                placeholder="e.g. Senior Digital Marketer" 
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                value={editing.title}
+                onChange={e => setEditing({...editing, title: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Company / Institution</label>
+              <input 
+                placeholder="e.g. Global Tech Solutions" 
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                value={editing.company}
+                onChange={e => setEditing({...editing, company: e.target.value})}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Time Period</label>
             <input 
-              placeholder="Role Title" 
-              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-              value={editing.title}
-              onChange={e => setEditing({...editing, title: e.target.value})}
-            />
-            <input 
-              placeholder="Company/Institution" 
-              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-              value={editing.company}
-              onChange={e => setEditing({...editing, company: e.target.value})}
+              placeholder="e.g. Jan 2022 - Present" 
+              className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+              value={editing.year}
+              onChange={e => setEditing({...editing, year: e.target.value})}
             />
           </div>
-          <input 
-            placeholder="Year/Period (e.g. 2021 - 2024)" 
-            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-            value={editing.year}
-            onChange={e => setEditing({...editing, year: e.target.value})}
-          />
-          <textarea 
-            placeholder="Description" 
-            rows={4}
-            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors resize-none"
-            value={editing.description}
-            onChange={e => setEditing({...editing, description: e.target.value})}
-          />
-          <div className="flex gap-4">
-            <button onClick={save} className="flex-1 bg-teal-500 text-black font-bold py-4 rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Key Responsibilities & Achievements</label>
+            <textarea 
+              placeholder="Detail your impact and core duties..." 
+              rows={5}
+              className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors resize-none shadow-sm"
+              value={editing.description}
+              onChange={e => setEditing({...editing, description: e.target.value})}
+            />
+          </div>
+          <div className="flex gap-4 pt-4 border-t border-gray-200">
+            <button onClick={save} className="flex-1 bg-[#141414] text-white font-bold py-5 rounded-2xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 shadow-xl">
               <Save size={18} /> Save Experience
             </button>
-            <button onClick={() => setEditing(null)} className="flex-1 bg-white/5 font-bold py-4 rounded-xl hover:bg-white/10 transition-all">Cancel</button>
+            <button onClick={() => setEditing(null)} className="flex-1 bg-white text-[#141414] font-bold py-5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all">Cancel</button>
           </div>
         </motion.div>
       )}
 
       <div className="space-y-4">
         {experiences.map(e => (
-          <div key={e.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5 group hover:border-white/10 transition-all">
+          <div key={e.id} className="p-8 bg-white rounded-3xl flex justify-between items-center border border-gray-100 group hover:border-teal-100 transition-all shadow-sm">
              <div>
-               <h4 className="font-bold text-lg">{e.title}</h4>
-               <p className="text-teal-500 text-xs font-bold uppercase tracking-widest">{e.company} • {e.year}</p>
+               <h4 className="font-bold text-2xl text-[#141414]">{e.title}</h4>
+               <p className="text-teal-600 text-xs font-bold uppercase tracking-[0.2em] mt-1">{e.company} <span className="text-gray-200 mx-2">/</span> {e.year}</p>
              </div>
-             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-               <button onClick={() => setEditing(e)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-teal-500 transition-all"><Edit size={16} /></button>
-               <button onClick={() => remove(e.id)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
+             <div className="flex gap-2">
+               <button onClick={() => setEditing(e)} className="p-3 bg-gray-50 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-xl transition-all"><Edit size={16} /></button>
+               <button onClick={() => remove(e.id)} className="p-3 bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
              </div>
           </div>
         ))}
@@ -946,7 +1041,7 @@ function AdminSettings() {
     setLoading(true);
     try {
       await setDoc(doc(db, "settings", "global"), settings);
-      alert('Settings saved!');
+      alert('Portfolio core settings updated successfully!');
     } catch (err) { handleFirestoreError(err, OperationType.WRITE, 'settings/global'); }
     setLoading(false);
   };
@@ -955,51 +1050,66 @@ function AdminSettings() {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl grid md:grid-cols-2 gap-8"
+      className="max-w-6xl grid md:grid-cols-2 gap-12"
     >
-      <div className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-teal-500 block">Personal Information</label>
-        {['name', 'title', 'location', 'phone', 'email'].map(field => (
-           <div key={field}>
-             <label className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-2 block">{field}</label>
-             <input 
-               value={(settings as any)[field]} 
-               onChange={e => setSettings({...settings, [field]: e.target.value})}
-               className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-             />
-           </div>
-        ))}
+      <div className="space-y-8">
+        <div>
+          <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+            <div className="w-2 h-2 bg-teal-500 rounded-full" /> Personal Profile
+          </h3>
+          <div className="space-y-6">
+            {['name', 'title', 'location', 'phone', 'email'].map(field => (
+               <div key={field} className="space-y-2">
+                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">{field}</label>
+                 <input 
+                   value={(settings as any)[field]} 
+                   onChange={e => setSettings({...settings, [field]: e.target.value})}
+                   className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                 />
+               </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-teal-500 block">Biographical & Profile</label>
+      <div className="space-y-8">
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-2 block">Bio</label>
-          <textarea 
-            value={settings.bio} 
-            onChange={e => setSettings({...settings, bio: e.target.value})}
-            rows={6}
-            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors resize-none"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-2 block">Profile Image URL</label>
-          <input 
-            value={settings.profileImageUrl} 
-            onChange={e => setSettings({...settings, profileImageUrl: e.target.value})}
-            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
-          />
-          <div className="mt-4 w-20 h-20 bg-white/5 rounded-full overflow-hidden border border-white/10">
-            <img src={settings.profileImageUrl} className="w-full h-full object-cover" />
+          <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+            <div className="w-2 h-2 bg-teal-500 rounded-full" /> Bio & Identity
+          </h3>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Professional Biography</label>
+              <textarea 
+                value={settings.bio} 
+                onChange={e => setSettings({...settings, bio: e.target.value})}
+                rows={8}
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors resize-none shadow-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Profile Avatar URL</label>
+              <input 
+                value={settings.profileImageUrl} 
+                onChange={e => setSettings({...settings, profileImageUrl: e.target.value})}
+                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+              />
+              <div className="mt-4 flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="w-16 h-16 bg-white rounded-full overflow-hidden border border-gray-100 shadow-sm">
+                  <img src={settings.profileImageUrl} className="w-full h-full object-cover" />
+                </div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Preview of current profile photo</div>
+              </div>
+            </div>
           </div>
         </div>
         
         <button 
           onClick={save} 
           disabled={loading}
-          className="w-full bg-teal-500 text-black font-bold py-4 rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-500/20"
+          className="w-full bg-[#141414] text-white font-bold py-6 rounded-2xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 shadow-2xl shadow-gray-200"
         >
-          {loading ? "Saving..." : <><Save size={18}/> Save Global Settings</>}
+          {loading ? "Synchronizing..." : <><Save size={20}/> Deploy Portfolio Updates</>}
         </button>
       </div>
     </motion.div>
@@ -1016,7 +1126,7 @@ function AdminMessages() {
   }, []);
 
   const remove = async (id: string) => {
-    if (!confirm('Remove this message?')) return;
+    if (!confirm('Permanently remove this connection record?')) return;
     try {
       await deleteDoc(doc(db, "guestbook", id));
     } catch (err) {
@@ -1025,16 +1135,35 @@ function AdminMessages() {
   };
 
   return (
-    <div className="space-y-4">
-      {messages.map(m => (
-        <div key={m.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-start border border-white/5">
-          <div>
-            <div className="text-teal-500 font-bold mb-2">@{m.userName}</div>
-            <p className="text-white/60 text-sm">{m.message}</p>
+    <div className="space-y-6">
+      <div className="grid gap-4">
+        {messages.map(m => (
+          <div key={m.id} className="p-8 bg-white rounded-3xl flex justify-between items-start border border-gray-100 shadow-sm hover:border-teal-100 transition-all">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-[10px] font-bold">
+                  {m.userName.charAt(0)}
+                </div>
+                <div className="text-sm font-bold text-[#141414]">@{m.userName}</div>
+              </div>
+              <p className="text-gray-500 font-medium leading-relaxed">{m.message}</p>
+              {m.timestamp && (
+                <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+                  {m.timestamp.toDate ? formatDate(m.timestamp.toDate()) : "Recent"}
+                </div>
+              )}
+            </div>
+            <button onClick={() => remove(m.id)} className="p-3 bg-gray-50 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shadow-sm">
+              <Trash2 size={18} />
+            </button>
           </div>
-          <button onClick={() => remove(m.id)} className="text-white/20 hover:text-red-500"><Trash2 size={16} /></button>
-        </div>
-      ))}
+        ))}
+        {messages.length === 0 && (
+          <div className="py-20 text-center border-2 border-dashed border-gray-50 rounded-[2.5rem] text-gray-300 font-medium italic">
+            Your guestbook is currently empty.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
