@@ -111,49 +111,70 @@ const DEFAULT_SETTINGS: SiteSettings = {
 
 function Nav() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+  const isAdminPage = location.pathname === '/admin';
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-[#fdfdfd]/80 backdrop-blur-md border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-display font-bold tracking-tighter italic">
-          Gokul Krisnan <span className="text-teal-500">.</span>
+    <nav className="fixed top-0 w-full z-50 bg-[#FAFAFA]/70 backdrop-blur-xl border-b border-gray-100/50">
+      <div className="max-w-7xl mx-auto px-6 h-16 sm:h-20 flex justify-between items-center">
+        <Link to="/" className="text-xl sm:text-2xl font-display font-bold tracking-tight italic group">
+          G<span className="text-teal-500 group-hover:text-[#141414] transition-colors">.</span> Krisnan
         </Link>
 
-        <div className="hidden md:flex gap-10 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
-          {["Home", "Works", "Experience", "Certificates", "Guestbook"].map((item) => (
-            <a 
-              key={item} 
-              href={window.location.pathname === '/' ? `#${item.toLowerCase()}` : `/#${item.toLowerCase()}`}
-              className="hover:text-[#141414] transition-colors"
-            >
-              {item}
-            </a>
-          ))}
-        </div>
+        {isAdminPage ? (
+          <div className="flex items-center gap-4">
+             <Link to="/" className="text-[10px] font-bold uppercase tracking-widest text-[#141414] px-4 py-2 bg-white border border-gray-100 rounded-full shadow-sm hover:bg-gray-50 transition-all">
+               Live Site
+             </Link>
+          </div>
+        ) : (
+          <>
+            <div className="hidden md:flex gap-10 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
+              {["Home", "Works", "Experience", "Certificates", "Guestbook"].map((item) => (
+                <a 
+                  key={item} 
+                  href={`/#${item.toLowerCase()}`}
+                  className="hover:text-[#141414] transition-colors"
+                >
+                  {item}
+                </a>
+              ))}
+            </div>
 
-        <div className="flex items-center gap-6">
-          <button className="md:hidden text-[#141414]" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
+            <div className="flex items-center gap-6">
+              <button className="md:hidden text-[#141414]" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
+          </>
+        )}
       </div>
       
-      {isMenuOpen && (
+      {!isAdminPage && isMenuOpen && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="md:hidden bg-white p-6 flex flex-col gap-4 border-b border-gray-100"
+          className="md:hidden bg-white/95 backdrop-blur-xl p-8 flex flex-col gap-6 border-b border-gray-100 shadow-xl"
         >
            {["Home", "Works", "Experience", "Certificates", "Guestbook"].map((item) => (
               <a 
                 key={item} 
-                href={window.location.pathname === '/' ? `#${item.toLowerCase()}` : `/#${item.toLowerCase()}`}
+                href={`/#${item.toLowerCase()}`}
                 onClick={() => setIsMenuOpen(false)} 
-                className="text-sm font-bold uppercase tracking-widest"
+                className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 hover:text-teal-500 transition-colors"
               >
                 {item}
               </a>
             ))}
+            <div className="pt-4 border-t border-gray-50">
+             <Link 
+               to="/admin" 
+               onClick={() => setIsMenuOpen(false)}
+               className="text-[10px] font-bold uppercase tracking-widest text-[#141414] flex items-center gap-2"
+             >
+               <Settings size={12} /> Dashboard
+             </Link>
+           </div>
         </motion.div>
       )}
     </nav>
@@ -228,44 +249,42 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-between items-center px-2">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414]">{label}</label>
+    <div className="space-y-2">
+      <div className="flex justify-between items-center px-1">
+        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</label>
         <button 
           onClick={() => setShowUrlInput(!showUrlInput)}
-          className="text-[10px] font-bold text-teal-600 uppercase tracking-tight hover:underline"
+          className="text-[10px] font-bold text-teal-600 uppercase tracking-tight hover:opacity-70 transition-opacity"
         >
-          {showUrlInput ? "Use Upload" : "Enter URL instead"}
+          {showUrlInput ? "Use Upload" : "Enter URL"}
         </button>
       </div>
 
       {showUrlInput ? (
         <input 
           placeholder="https://example.com/image.jpg" 
-          className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm text-sm"
+          className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-teal-500 transition-all shadow-sm text-xs"
           value={currentUrl || ""}
           onChange={e => onUpload(e.target.value)}
         />
       ) : (
-        <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
-          <div className="p-6 flex items-center gap-6">
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-4 flex items-center gap-4">
             <div 
               onClick={() => !uploading && fileInputRef.current?.click()}
               className={cn(
-                "w-24 h-24 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all group shrink-0",
+                "w-16 h-16 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all shrink-0",
                 uploading && "opacity-50 cursor-wait",
                 !isConfigured && "opacity-50 grayscale",
                 isConfigured && "hover:border-teal-500 hover:bg-teal-50"
               )}
             >
               {uploading ? (
-                <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
               ) : (
-                <>
-                  <Plus size={20} className="text-gray-300 group-hover:text-teal-500" />
-                  <span className="text-[8px] font-bold uppercase tracking-tight text-gray-400 group-hover:text-teal-500">Pick Photo</span>
-                </>
+                <Plus size={16} className="text-gray-400" />
               )}
+              <span className="text-[7px] font-bold uppercase text-gray-400">Pick</span>
             </div>
             
             <input
@@ -276,26 +295,18 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
               accept="image/*"
             />
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               {!isConfigured ? (
-                <div className="space-y-1">
-                  <div className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Configuration Required</div>
-                  <p className="text-[10px] text-gray-400 leading-tight">
-                    Add <code className="bg-gray-50 px-1 rounded">VITE_CLOUDINARY_CLOUD_NAME</code> and <code className="bg-gray-50 px-1 rounded">VITE_CLOUDINARY_UPLOAD_PRESET</code> in Settings &gt; Environment to enable uploads.
-                  </p>
-                </div>
+                <p className="text-[9px] text-red-400 leading-tight">Config required in Settings &gt; Env</p>
               ) : currentUrl ? (
-                <div className="space-y-2">
-                  <div className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">Image Loaded</div>
-                  <div className="h-10 w-full bg-gray-50 rounded-xl overflow-hidden border border-gray-100 flex items-center px-4">
-                    <span className="text-[10px] text-gray-400 truncate font-mono">{currentUrl}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 shrink-0">
+                    <img src={currentUrl} className="w-full h-full object-cover" />
                   </div>
+                  <span className="text-[9px] text-gray-400 truncate font-mono flex-1">{currentUrl}</span>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No file selected</div>
-                  <p className="text-[10px] text-gray-400">Tap the plus icon to upload from gallery.</p>
-                </div>
+                <p className="text-[9px] text-gray-400 italic">No photo selected</p>
               )}
             </div>
           </div>
@@ -734,18 +745,18 @@ function Admin() {
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white border border-gray-100 p-12 rounded-[2.5rem] text-center shadow-2xl shadow-gray-200"
+          className="max-w-md w-full bg-white border border-gray-100 p-6 sm:p-12 rounded-[2rem] text-center shadow-xl shadow-gray-200"
         >
-          <div className="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-8 border border-red-100">
-             <LogOut size={32} className="text-red-500" />
+          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-red-100">
+             <LogOut size={24} className="text-red-500" />
           </div>
-          <h2 className="text-3xl font-display font-bold text-[#141414] mb-3">Access Denied</h2>
-          <p className="text-gray-400 font-medium mb-8 leading-relaxed">
-            Account <span className="text-[#141414] font-bold">{user.email}</span> is not authorized to access this dashboard.
+          <h2 className="text-2xl font-display font-bold text-[#141414] mb-2">Access Denied</h2>
+          <p className="text-gray-400 text-sm font-medium mb-6 leading-relaxed">
+            Account <span className="text-[#141414] font-bold">{user.email}</span> is not authorized.
           </p>
           <button 
             onClick={logout} 
-            className="w-full bg-gray-50 text-gray-400 font-bold py-4 rounded-xl border border-gray-100 hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all uppercase tracking-widest text-xs"
+            className="w-full bg-gray-50 text-gray-400 font-bold py-4 rounded-xl border border-gray-100 hover:bg-red-50 hover:text-red-500 transition-all uppercase tracking-widest text-[10px]"
           >
             Switch Account
           </button>
@@ -755,46 +766,48 @@ function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fdfdfd] text-[#141414]">
+    <div className="min-h-screen bg-[#FAFAFA] text-[#141414] selection:bg-teal-100">
       <Nav />
-      <div className="max-w-7xl mx-auto px-6 pt-32 pb-20">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-24">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 px-2">
           <div>
-            <h1 className="text-5xl font-display font-bold tracking-tighter italic">Admin Dashboard</h1>
-            <p className="text-gray-400 font-medium mt-2">Manage your professional presence</p>
+            <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight italic">Admin</h1>
+            <p className="text-gray-400 text-xs font-medium mt-1">Manage your professional hub</p>
           </div>
           <button 
             onClick={logout} 
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#141414] bg-white border border-gray-100 px-6 py-3 rounded-full hover:bg-gray-50 transition-all shadow-sm"
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-red-500 transition-all"
           >
-            <LogOut size={14} /> Logout
+            <LogOut size={12} /> Logout
           </button>
         </div>
 
-        <div className="flex gap-4 mb-12 overflow-x-auto pb-4 no-scrollbar">
-          {["projects", "certificates", "experience", "settings", "messages", "setup"].map(tab => (
-            <button 
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={cn(
-                "px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] transition-all whitespace-nowrap",
-                activeTab === tab 
-                  ? "bg-teal-500 text-white shadow-xl shadow-teal-100" 
-                  : "bg-white text-gray-400 border border-gray-100 hover:text-[#141414]"
-              )}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="sticky top-[72px] z-20 bg-[#FAFAFA]/80 backdrop-blur-md py-2 mb-8 -mx-4 px-4 overflow-hidden">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mask-linear-right">
+            {["projects", "certificates", "experience", "settings", "messages", "setup"].map(tab => (
+              <button 
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap border",
+                  activeTab === tab 
+                    ? "bg-[#141414] text-white border-[#141414] shadow-lg shadow-gray-200" 
+                    : "bg-white text-gray-400 border-gray-100 hover:border-gray-200"
+                )}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="bg-white border border-gray-100 p-8 md:p-12 rounded-[2.5rem] shadow-sm"
+            exit={{ opacity: 0, y: -8 }}
+            className="bg-white border border-gray-100 p-5 sm:p-8 rounded-[1.5rem] shadow-sm relative overflow-hidden"
           >
             {activeTab === 'projects' && <AdminProjects />}
             {activeTab === 'certificates' && <AdminCertificates />}
@@ -810,25 +823,35 @@ function Admin() {
 }
 
 function AdminSetup() {
+  const [openSection, setOpenSection] = useState<'rules' | 'photo' | null>(null);
+
   return (
-    <div className="space-y-12">
-      <div>
-        <h2 className="text-3xl font-display font-bold mb-6 italic tracking-tight">Setup Assistant</h2>
-        <p className="text-gray-400 max-w-2xl mb-10 leading-relaxed font-medium">To keep your portfolio running smoothly, ensure the following configurations are applied in your external accounts.</p>
+    <div className="space-y-6">
+      <div className="px-1">
+        <h2 className="text-2xl font-display font-bold mb-2 italic tracking-tight">Setup Assistant</h2>
+        <p className="text-gray-400 text-xs leading-relaxed font-medium">Configure your portfolio backend connections.</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-12">
-        <div className="space-y-6">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center">
-              <Settings size={20} />
+      <div className="space-y-3">
+        <div className="border border-gray-100 rounded-2xl overflow-hidden">
+          <button 
+            onClick={() => setOpenSection(openSection === 'rules' ? null : 'rules')}
+            className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center">
+                <Settings size={16} />
+              </div>
+              <h3 className="text-sm font-bold">1. Fix "Permission Denied"</h3>
             </div>
-            <h3 className="text-lg font-bold">1. Fix "Permission Denied"</h3>
-          </div>
-          <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
-             <p className="text-[11px] text-gray-500 leading-relaxed">If you see "Missing or insufficient permissions," copy the rules below and paste them into your <b>Firebase Console &gt; Firestore Database &gt; Rules</b>.</p>
-             <div className="bg-[#141414] p-4 rounded-xl overflow-hidden relative group">
-                <pre className="text-[9px] text-gray-400 font-mono overflow-x-auto max-h-40 no-scrollbar">
+            <Plus size={16} className={cn("text-gray-300 transition-transform", openSection === 'rules' && "rotate-45")} />
+          </button>
+          
+          {openSection === 'rules' && (
+            <div className="p-4 bg-white border-t border-gray-100 space-y-3">
+              <p className="text-[10px] text-gray-500 leading-relaxed">Paste these rules in <b>Firebase Console &gt; Firestore &gt; Rules</b>.</p>
+              <div className="bg-[#141414] p-3 rounded-xl relative group">
+                <pre className="text-[8px] text-teal-400 font-mono overflow-x-auto max-h-48 no-scrollbar leading-tight">
 {`rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -848,26 +871,38 @@ service cloud.firestore {
   }
 }`}
                 </pre>
-             </div>
-          </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="space-y-6">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-10 h-10 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center">
-              <Plus size={20} />
+        <div className="border border-gray-100 rounded-2xl overflow-hidden">
+          <button 
+            onClick={() => setOpenSection(openSection === 'photo' ? null : 'photo')}
+            className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-teal-50 text-teal-600 rounded-lg flex items-center justify-center">
+                <Plus size={16} />
+              </div>
+              <h3 className="text-sm font-bold">2. Enable Photo Uploads</h3>
             </div>
-            <h3 className="text-lg font-bold">2. Enable Photo Uploads</h3>
-          </div>
-          <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
-             <p className="text-[11px] text-gray-500 leading-relaxed">I've used Cloudinary as a free alternative to Firebase Storage. To enable it:</p>
-             <ol className="text-[11px] text-gray-500 list-decimal pl-4 space-y-2">
-               <li>Create a free account at <a href="https://cloudinary.com" target="_blank" className="text-teal-600 underline">cloudinary.com</a></li>
-               <li>Find your <b>Cloud Name</b> and <b>Unsigned Upload Preset</b></li>
-               <li>Go to <b>Settings &gt; Environment</b> in this editor</li>
-               <li>Add <code>VITE_CLOUDINARY_CLOUD_NAME</code> and <code>VITE_CLOUDINARY_UPLOAD_PRESET</code></li>
-             </ol>
-          </div>
+            <Plus size={16} className={cn("text-gray-300 transition-transform", openSection === 'photo' && "rotate-45")} />
+          </button>
+          
+          {openSection === 'photo' && (
+            <div className="p-4 bg-white border-t border-gray-100">
+              <div className="space-y-3">
+                <p className="text-[10px] text-gray-500 leading-relaxed">Cloudinary setup for image hosting:</p>
+                <ol className="text-[10px] text-gray-500 list-decimal pl-4 space-y-2">
+                  <li>Create account at <a href="https://cloudinary.com" target="_blank" className="text-teal-600 underline">cloudinary.com</a></li>
+                  <li>Find your <b>Cloud Name</b> and <b>Unsigned Upload Preset</b></li>
+                  <li>In this editor: <b>Settings &gt; Environment</b></li>
+                  <li>Add <code>VITE_CLOUDINARY_CLOUD_NAME</code> and <code>VITE_CLOUDINARY_UPLOAD_PRESET</code></li>
+                </ol>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -903,85 +938,81 @@ function AdminCertificates() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <button 
         onClick={() => setEditing({ title: "", provider: "", issueDate: "", imageUrl: "" })}
-        className="w-full p-12 border-2 border-dashed border-gray-100 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-gray-300 hover:text-teal-500 hover:border-teal-100 transition-all group"
+        className="w-full py-6 border-2 border-dashed border-gray-100 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-teal-500 hover:border-teal-100 transition-all group"
       >
-        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-teal-50 transition-colors">
-          <Plus size={24} />
+        <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-teal-50">
+          <Plus size={20} />
         </div>
-        <span className="text-xs font-bold uppercase tracking-widest">Add New Certificate</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest">New Certificate</span>
       </button>
 
       {editing && (
         <motion.div 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-8 bg-gray-50 rounded-3xl space-y-6 border border-gray-100 shadow-inner"
+          className="p-5 bg-gray-50/50 rounded-2xl space-y-5 border border-gray-100"
         >
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Certificate Title</label>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414] ml-1">Title</label>
               <input 
-                placeholder="e.g. Advanced Digital Marketing" 
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors"
+                placeholder="Certificate Title" 
+                className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm shadow-sm"
                 value={editing.title}
                 onChange={e => setEditing({...editing, title: e.target.value})}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Provider</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414] ml-1">Provider</label>
               <input 
-                placeholder="e.g. Google Academy" 
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors"
+                placeholder="e.g. Google" 
+                className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm shadow-sm"
                 value={editing.provider}
                 onChange={e => setEditing({...editing, provider: e.target.value})}
               />
             </div>
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Issue Date</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414] ml-1">Date</label>
               <input 
-                placeholder="e.g. May 2024" 
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors"
+                placeholder="May 2024" 
+                className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm shadow-sm"
                 value={editing.issueDate}
                 onChange={e => setEditing({...editing, issueDate: e.target.value})}
               />
             </div>
-            <div className="space-y-2">
-              <FileUpload 
-                label="Certificate Image" 
-                currentUrl={editing.imageUrl} 
-                onUpload={(url) => setEditing({...editing, imageUrl: url})} 
-              />
-            </div>
+            <FileUpload 
+              label="Certificate Image" 
+              currentUrl={editing.imageUrl} 
+              onUpload={(url) => setEditing({...editing, imageUrl: url})} 
+            />
           </div>
-          <div className="flex gap-4 pt-4">
-            <button onClick={save} className="flex-1 bg-[#141414] text-white font-bold py-5 rounded-2xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 shadow-lg">
-              <Save size={18} /> Save Certificate
+          <div className="flex flex-col gap-2 pt-2">
+            <button onClick={save} className="w-full bg-[#141414] text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-sm text-sm">
+              <Save size={16} /> Save Data
             </button>
-            <button onClick={() => setEditing(null)} className="flex-1 bg-white text-[#141414] font-bold py-5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all">Cancel</button>
+            <button onClick={() => setEditing(null)} className="w-full bg-white text-gray-400 font-bold py-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-all text-sm">Cancel</button>
           </div>
         </motion.div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid gap-3">
         {certs.map(c => (
-          <div key={c.id} className="p-6 bg-white rounded-2xl flex justify-between items-center border border-gray-100 group hover:border-teal-100 transition-all shadow-sm">
-             <div className="flex items-center gap-4">
-               <div className="w-14 h-14 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 overflow-hidden shrink-0">
-                 {c.imageUrl ? <img src={c.imageUrl} className="w-full h-full object-cover" /> : <Briefcase size={24} className="text-gray-200" />}
+          <div key={c.id} className="p-4 bg-white rounded-2xl flex justify-between items-center border border-gray-100 group transition-all">
+             <div className="flex items-center gap-3 min-w-0">
+               <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-50 overflow-hidden shrink-0">
+                 {c.imageUrl ? <img src={c.imageUrl} className="w-full h-full object-cover" /> : <Briefcase size={18} className="text-gray-200" />}
                </div>
-               <div>
-                 <h4 className="font-bold text-[#141414]">{c.title}</h4>
-                 <p className="text-[10px] text-teal-600 uppercase font-bold tracking-widest mt-1">{c.provider}</p>
+               <div className="min-w-0 flex-1">
+                 <h4 className="font-bold text-sm text-[#141414] truncate">{c.title}</h4>
+                 <p className="text-[10px] text-teal-600 uppercase font-bold tracking-widest mt-0.5 truncate">{c.provider}</p>
                </div>
              </div>
-             <div className="flex gap-2">
-               <button onClick={() => setEditing(c)} className="p-3 bg-gray-50 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-xl transition-all"><Edit size={16} /></button>
-               <button onClick={() => remove(c.id)} className="p-3 bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
+             <div className="flex gap-1.5 shrink-0 ml-3">
+               <button onClick={() => setEditing(c)} className="p-2.5 text-gray-300 hover:text-[#141414] hover:bg-gray-50 rounded-lg transition-all"><Edit size={14} /></button>
+               <button onClick={() => remove(c.id)} className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={14} /></button>
              </div>
           </div>
         ))}
@@ -1019,95 +1050,93 @@ function AdminProjects() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <button 
         onClick={() => setEditing({ title: "", description: "", order: projects.length, imageUrl: "", liveUrl: "", githubUrl: "", techStack: [] })}
-        className="w-full p-12 border-2 border-dashed border-gray-100 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-gray-300 hover:text-teal-500 hover:border-teal-100 transition-all group"
+        className="w-full py-6 border-2 border-dashed border-gray-100 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-[#141414] hover:border-gray-300 transition-all group"
       >
-        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-teal-50 transition-colors">
-          <Plus size={24} />
+        <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-gray-100">
+          <Plus size={20} />
         </div>
-        <span className="text-xs font-bold uppercase tracking-widest">Add New Project</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest">New Project</span>
       </button>
 
       {editing && (
         <motion.div 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-8 bg-gray-50 rounded-3xl space-y-8 border border-gray-100 shadow-inner"
+          className="p-5 bg-gray-50/50 rounded-2xl space-y-6 border border-gray-100 shadow-sm"
         >
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="space-y-6">
             <div className="space-y-4">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414]">Basic Information</label>
-              <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1">Essentials</label>
+              <div className="space-y-3">
                 <input 
-                  placeholder="Project Title" 
-                  className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                  placeholder="Project Headline" 
+                  className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm shadow-sm"
                   value={editing.title}
                   onChange={e => setEditing({...editing, title: e.target.value})}
                 />
-              </div>
-              <div className="space-y-2">
                 <textarea 
-                  placeholder="Compelling description of the work" 
-                  rows={6}
-                  className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors resize-none shadow-sm"
+                  placeholder="The story behind this work..." 
+                  rows={4}
+                  className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm resize-none shadow-sm"
                   value={editing.description}
                   onChange={e => setEditing({...editing, description: e.target.value})}
                 />
               </div>
             </div>
-            <div className="space-y-6">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414]">Visuals & Assets</label>
-              <FileUpload 
-                label="Featured Project Hero Image" 
-                currentUrl={editing.imageUrl} 
-                onUpload={(url) => setEditing({...editing, imageUrl: url})} 
-              />
-              <div className="space-y-2">
-                <input 
-                  placeholder="Live View URL" 
-                  className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
-                  value={editing.liveUrl || ""}
-                  onChange={e => setEditing({...editing, liveUrl: e.target.value})}
+            <div className="space-y-4">
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1">Assets & Links</label>
+              <div className="space-y-4">
+                <FileUpload 
+                  label="Hero Image" 
+                  currentUrl={editing.imageUrl} 
+                  onUpload={(url) => setEditing({...editing, imageUrl: url})} 
                 />
-              </div>
-              <div className="space-y-2">
-                <input 
-                  placeholder="Repository Link (Optional)" 
-                  className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
-                  value={editing.githubUrl || ""}
-                  onChange={e => setEditing({...editing, githubUrl: e.target.value})}
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input 
+                    placeholder="Live URL" 
+                    className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-xs shadow-sm"
+                    value={editing.liveUrl || ""}
+                    onChange={e => setEditing({...editing, liveUrl: e.target.value})}
+                  />
+                  <input 
+                    placeholder="GitHub Repo" 
+                    className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-xs shadow-sm"
+                    value={editing.githubUrl || ""}
+                    onChange={e => setEditing({...editing, githubUrl: e.target.value})}
+                  />
+                </div>
               </div>
             </div>
           </div>
-          <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button onClick={save} className="flex-1 bg-[#141414] text-white font-bold py-5 rounded-2xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 shadow-xl">
-              <Save size={18} /> Save Project Entity
+          <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-gray-200">
+            <button onClick={save} className="flex-1 bg-[#141414] text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm">
+              <Save size={16} /> Update Project
             </button>
-            <button onClick={() => setEditing(null)} className="flex-1 bg-white text-[#141414] font-bold py-5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all">Cancel</button>
+            <button onClick={() => setEditing(null)} className="flex-1 bg-white text-gray-400 font-bold py-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-all text-sm">Dismiss</button>
           </div>
         </motion.div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid gap-4">
         {projects.map(p => (
-          <div key={p.id} className="p-8 bg-white rounded-3xl flex justify-between items-center border border-gray-100 group hover:border-teal-100 transition-all shadow-sm">
-             <div className="flex items-center gap-6">
-               <div className="w-20 h-20 bg-gray-50 rounded-2xl overflow-hidden flex items-center justify-center border border-gray-100 shrink-0">
-                 {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : <Cpu size={32} className="text-gray-200" />}
+          <div key={p.id} className="p-4 bg-white rounded-2xl flex justify-between items-center border border-gray-100 group transition-all">
+             <div className="flex items-center gap-4 min-w-0">
+               <div className="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex items-center justify-center border border-gray-50 shrink-0">
+                 {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : <Cpu size={24} className="text-gray-200" />}
                </div>
-               <div>
-                 <h4 className="font-bold text-xl text-[#141414] mb-1">{p.title}</h4>
+               <div className="min-w-0 flex-1">
+                 <h4 className="font-bold text-base text-[#141414] truncate">{p.title}</h4>
                  <div className="flex items-center gap-2">
-                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Priority: {p.order}</span>
+                   <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Prio: {p.order}</span>
                  </div>
                </div>
              </div>
-             <div className="flex flex-col gap-2">
-               <button onClick={() => setEditing(p)} className="p-3 bg-gray-50 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-xl transition-all"><Edit size={16} /></button>
-               <button onClick={() => remove(p.id)} className="p-3 bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
+             <div className="flex flex-col gap-1.5 shrink-0 ml-4">
+               <button onClick={() => setEditing(p)} className="p-2.5 text-gray-300 hover:text-[#141414] hover:bg-gray-50 rounded-lg transition-all"><Edit size={14} /></button>
+               <button onClick={() => remove(p.id)} className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={14} /></button>
              </div>
           </div>
         ))}
@@ -1145,81 +1174,81 @@ function AdminExperience() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <button 
         onClick={() => setEditing({ title: "", company: "", year: "", description: "", order: experiences.length })}
-        className="w-full p-12 border-2 border-dashed border-gray-100 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-gray-300 hover:text-teal-500 hover:border-teal-100 transition-all group"
+        className="w-full py-6 border-2 border-dashed border-gray-100 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-[#141414] hover:border-gray-300 transition-all group"
       >
-        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-teal-50 transition-colors">
-          <Plus size={24} />
+        <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-gray-100">
+          <Plus size={20} />
         </div>
-        <span className="text-xs font-bold uppercase tracking-widest">Add New Experience Entry</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest">New Experience</span>
       </button>
 
       {editing && (
         <motion.div 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-8 bg-gray-50 rounded-3xl space-y-6 border border-gray-100 shadow-inner"
+          className="p-5 bg-gray-50/50 rounded-2xl space-y-5 border border-gray-100"
         >
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Job Title / Role</label>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Role</label>
               <input 
-                placeholder="e.g. Senior Digital Marketer" 
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                placeholder="Job Title" 
+                className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm shadow-sm"
                 value={editing.title}
                 onChange={e => setEditing({...editing, title: e.target.value})}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Company / Institution</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Org</label>
               <input 
-                placeholder="e.g. Global Tech Solutions" 
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                placeholder="Company Name" 
+                className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm shadow-sm"
                 value={editing.company}
                 onChange={e => setEditing({...editing, company: e.target.value})}
               />
             </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Time</label>
+              <input 
+                placeholder="2022 - Present" 
+                className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm shadow-sm"
+                value={editing.year}
+                onChange={e => setEditing({...editing, year: e.target.value})}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Description</label>
+              <textarea 
+                placeholder="What did you achieve?" 
+                rows={4}
+                className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm resize-none shadow-sm"
+                value={editing.description}
+                onChange={e => setEditing({...editing, description: e.target.value})}
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Time Period</label>
-            <input 
-              placeholder="e.g. Jan 2022 - Present" 
-              className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
-              value={editing.year}
-              onChange={e => setEditing({...editing, year: e.target.value})}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Key Responsibilities & Achievements</label>
-            <textarea 
-              placeholder="Detail your impact and core duties..." 
-              rows={5}
-              className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors resize-none shadow-sm"
-              value={editing.description}
-              onChange={e => setEditing({...editing, description: e.target.value})}
-            />
-          </div>
-          <div className="flex gap-4 pt-4 border-t border-gray-200">
-            <button onClick={save} className="flex-1 bg-[#141414] text-white font-bold py-5 rounded-2xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 shadow-xl">
-              <Save size={18} /> Save Experience
+          <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100 mt-2">
+            <button onClick={save} className="flex-1 bg-[#141414] text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm">
+              <Save size={16} /> Save Experience
             </button>
-            <button onClick={() => setEditing(null)} className="flex-1 bg-white text-[#141414] font-bold py-5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all">Cancel</button>
+            <button onClick={() => setEditing(null)} className="flex-1 bg-white text-gray-400 font-bold py-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-all text-sm">Cancel</button>
           </div>
         </motion.div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {experiences.map(e => (
-          <div key={e.id} className="p-8 bg-white rounded-3xl flex justify-between items-center border border-gray-100 group hover:border-teal-100 transition-all shadow-sm">
-             <div>
-               <h4 className="font-bold text-2xl text-[#141414]">{e.title}</h4>
-               <p className="text-teal-600 text-xs font-bold uppercase tracking-[0.2em] mt-1">{e.company} <span className="text-gray-200 mx-2">/</span> {e.year}</p>
+          <div key={e.id} className="p-5 bg-white rounded-2xl flex justify-between items-center border border-gray-100 group transition-all">
+             <div className="min-w-0 flex-1">
+               <h4 className="font-bold text-lg text-[#141414] truncate">{e.title}</h4>
+               <p className="text-teal-600 text-[10px] font-bold uppercase tracking-[0.15em] mt-0.5 truncate">{e.company} • {e.year}</p>
              </div>
-             <div className="flex gap-2">
-               <button onClick={() => setEditing(e)} className="p-3 bg-gray-50 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-xl transition-all"><Edit size={16} /></button>
-               <button onClick={() => remove(e.id)} className="p-3 bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
+             <div className="flex gap-1.5 shrink-0 ml-4">
+               <button onClick={() => setEditing(e)} className="p-2.5 text-gray-300 hover:text-[#141414] hover:bg-gray-50 rounded-lg transition-all"><Edit size={14} /></button>
+               <button onClick={() => remove(e.id)} className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={14} /></button>
              </div>
           </div>
         ))}
@@ -1248,71 +1277,73 @@ function AdminSettings() {
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-6xl grid md:grid-cols-2 gap-12"
-    >
-      <div className="space-y-8">
-        <div>
-          <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <div className="w-2 h-2 bg-teal-500 rounded-full" /> Personal Profile
-          </h3>
-          <div className="space-y-6">
+    <div className="space-y-10">
+      <div className="grid grid-cols-1 gap-10">
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 px-1 border-b border-gray-50 pb-3">
+            <div className="w-1.5 h-6 bg-teal-500 rounded-full" />
+            <h3 className="text-lg font-bold tracking-tight">Identity Details</h3>
+          </div>
+          <div className="grid gap-5">
             {['name', 'title', 'location', 'phone', 'email'].map(field => (
-               <div key={field} className="space-y-2">
-                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">{field}</label>
+               <div key={field} className="space-y-1.5">
+                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">{field}</label>
                  <input 
+                   placeholder={field}
                    value={(settings as any)[field]} 
                    onChange={e => setSettings({...settings, [field]: e.target.value})}
-                   className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm"
+                   className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm shadow-sm"
                  />
                </div>
             ))}
           </div>
         </div>
-      </div>
 
-      <div className="space-y-8">
-        <div>
-          <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <div className="w-2 h-2 bg-teal-500 rounded-full" /> Bio & Identity
-          </h3>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Professional Biography</label>
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 px-1 border-b border-gray-50 pb-3">
+            <div className="w-1.5 h-6 bg-teal-500 rounded-full" />
+            <h3 className="text-lg font-bold tracking-tight">Bio & Visuals</h3>
+          </div>
+          <div className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">About Me</label>
               <textarea 
                 value={settings.bio} 
                 onChange={e => setSettings({...settings, bio: e.target.value})}
-                rows={8}
-                className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors resize-none shadow-sm"
+                rows={6}
+                className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-sm resize-none shadow-sm"
+                placeholder="Brief professional intro..."
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-4">
               <FileUpload 
                 label="Profile Avatar" 
                 currentUrl={settings.profileImageUrl} 
                 onUpload={(url) => setSettings({...settings, profileImageUrl: url})} 
               />
-              <div className="mt-4 flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 italic">
-                <div className="w-16 h-16 bg-white rounded-full overflow-hidden border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="w-14 h-14 bg-white rounded-full overflow-hidden border border-gray-100 shadow-sm shrink-0">
                   <img src={settings.profileImageUrl} className="w-full h-full object-cover" />
                 </div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live circular preview of your active photo</div>
+                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+                  Active photo <br/> circular preview
+                </div>
               </div>
             </div>
           </div>
         </div>
-        
+      </div>
+      
+      <div className="pt-6 border-t border-gray-50">
         <button 
           onClick={save} 
           disabled={loading}
-          className="w-full bg-[#141414] text-white font-bold py-6 rounded-2xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 shadow-2xl shadow-gray-200"
+          className="w-full bg-[#141414] text-white font-bold py-5 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg text-sm"
         >
-          {loading ? "Synchronizing..." : <><Save size={20}/> Deploy Portfolio Updates</>}
+          {loading ? "Saving Changes..." : <><Save size={18}/> Deploy Profile Updates</>}
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -1335,32 +1366,32 @@ function AdminMessages() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4">
+    <div className="space-y-4">
+      <div className="grid gap-3">
         {messages.map(m => (
-          <div key={m.id} className="p-8 bg-white rounded-3xl flex justify-between items-start border border-gray-100 shadow-sm hover:border-teal-100 transition-all">
-            <div className="space-y-3">
+          <div key={m.id} className="p-5 bg-white rounded-2xl flex justify-between items-start border border-gray-100 shadow-sm transition-all">
+            <div className="space-y-2.5 min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-[10px] font-bold">
+                <div className="w-7 h-7 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">
                   {m.userName.charAt(0)}
                 </div>
-                <div className="text-sm font-bold text-[#141414]">@{m.userName}</div>
+                <div className="text-[13px] font-bold text-[#141414] truncate">@{m.userName}</div>
               </div>
-              <p className="text-gray-500 font-medium leading-relaxed">{m.message}</p>
+              <p className="text-gray-500 text-xs leading-relaxed break-words">{m.message}</p>
               {m.timestamp && (
-                <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+                <div className="text-[9px] font-bold text-gray-300 uppercase tracking-widest pt-1">
                   {m.timestamp.toDate ? formatDate(m.timestamp.toDate()) : "Recent"}
                 </div>
               )}
             </div>
-            <button onClick={() => remove(m.id)} className="p-3 bg-gray-50 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shadow-sm">
-              <Trash2 size={18} />
+            <button onClick={() => remove(m.id)} className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all ml-4 shrink-0">
+              <Trash2 size={16} />
             </button>
           </div>
         ))}
         {messages.length === 0 && (
-          <div className="py-20 text-center border-2 border-dashed border-gray-50 rounded-[2.5rem] text-gray-300 font-medium italic">
-            Your guestbook is currently empty.
+          <div className="py-16 text-center border border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
+            <div className="text-gray-300 text-xs font-medium italic">Empty guestbook</div>
           </div>
         )}
       </div>
