@@ -166,15 +166,6 @@ function Nav() {
                 {item}
               </a>
             ))}
-            <div className="pt-4 border-t border-gray-50">
-             <Link 
-               to="/admin" 
-               onClick={() => setIsMenuOpen(false)}
-               className="text-[10px] font-bold uppercase tracking-widest text-[#141414] flex items-center gap-2"
-             >
-               <Settings size={12} /> Dashboard
-             </Link>
-           </div>
         </motion.div>
       )}
     </nav>
