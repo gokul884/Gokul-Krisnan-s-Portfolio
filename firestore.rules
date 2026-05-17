@@ -1,56 +1,62 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // --- Global Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'krishnan989756@gmail.com' && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
     // Default deny
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && request.auth.token.email == 'krishnan989756@gmail.com';
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128;
-    }
-
-    // Settings
-    match /settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Projects
+    // projects collection
     match /projects/{projectId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Certificates
+    // certificates collection
     match /certificates/{certId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Experiences
+    // experiences collection
     match /experiences/{expId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Guestbook
+    // settings collection
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // guestbook collection
     match /guestbook/{messageId} {
-      allow read: if isAdmin();
-      allow create: if true 
-        && request.resource.data.keys().hasAll(['userName', 'message', 'timestamp'])
-        && request.resource.data.userName is string
-        && request.resource.data.message is string;
-      allow delete: if isAdmin();
+      // Admin can see all messages
+      allow get, list, delete: if isAdmin();
+      // Anyone can leave a message
+      allow create: if 
+        incoming().userName is string && incoming().userName.size() > 0 &&
+        incoming().message is string && incoming().message.size() > 0;
+      // No updates to messages allowed by anyone
+      allow update: if false;
     }
   }
 }
