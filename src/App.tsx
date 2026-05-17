@@ -112,15 +112,23 @@ const DEFAULT_SETTINGS: SiteSettings = {
 function Nav() {
   const [activeSection, setActiveSection] = useState('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const location = useLocation();
   const isAdminPage = location.pathname === '/admin';
 
   useEffect(() => {
+    const unsubSettings = onSnapshot(doc(db, "settings", "global"), (snap) => {
+      if (snap.exists()) setSettings(snap.data() as SiteSettings);
+    });
+    return () => unsubSettings();
+  }, []);
+
+  useEffect(() => {
     if (isAdminPage) return;
 
-    const options = {
+    const observerOptions = {
       root: null,
-      rootMargin: '-40% 0px -40% 0px',
+      rootMargin: '-5% 0px -90% 0px', // focused strip near top
       threshold: 0
     };
 
@@ -130,7 +138,7 @@ function Nav() {
           setActiveSection(entry.target.id);
         }
       });
-    }, options);
+    }, observerOptions);
 
     const sections = ['home', 'experience', 'works', 'certificates', 'guestbook'];
     sections.forEach(id => {
@@ -140,6 +148,19 @@ function Nav() {
 
     return () => observer.disconnect();
   }, [isAdminPage]);
+
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      window.scrollTo({
+        top: element.offsetTop - 100, // adjust for nav height
+        behavior: "smooth"
+      });
+      setActiveSection(id);
+      setIsMenuOpen(false);
+    }
+  };
 
   if (isAdminPage) {
     return (
@@ -162,73 +183,93 @@ function Nav() {
   const menuItems = ["Home", "Experience", "Works", "Certificates", "Guestbook"];
 
   return (
-    <div className="fixed top-6 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none">
-      <motion.nav
-        layout
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="bg-white/95 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] pointer-events-auto border border-gray-100 rounded-full p-1.5 flex items-center gap-1"
-      >
-        {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-1">
+    <>
+      {/* Mobile Top Bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-[100] bg-white h-16 flex items-center justify-between px-6">
+        <div className="text-2xl font-display font-bold tracking-tight">
+          {settings.name.split(' ')[0][0]}. {settings.name.split(' ').slice(-2, -1)}
+          <span className="text-teal-500">.</span>
+        </div>
+        <button 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="w-10 h-10 flex items-center justify-end text-[#141414]"
+        >
+          {isMenuOpen ? <X size={28} strokeWidth={1.5} /> : <Menu size={28} strokeWidth={1.5} />}
+        </button>
+      </div>
+
+      {/* Desktop Island Nav */}
+      <div className="hidden md:flex fixed top-6 left-0 right-0 z-[100] justify-center px-4 pointer-events-none">
+        <motion.nav
+          layout
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          className="bg-white/95 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] pointer-events-auto border border-gray-100 rounded-full p-1.5 flex items-center gap-1"
+        >
           {menuItems.map((item) => (
             <a 
               key={item} 
-              href={`/#${item.toLowerCase()}`}
+              href={`#${item.toLowerCase()}`}
+              onClick={(e) => scrollToSection(e, item.toLowerCase())}
               className={cn(
-                "text-[10px] font-bold uppercase tracking-[0.2em] px-6 py-3 rounded-full transition-all duration-300",
+                "relative text-[10px] font-bold uppercase tracking-[0.2em] px-6 py-3 rounded-full transition-all duration-300",
                 activeSection === item.toLowerCase() 
-                  ? "bg-teal-500 text-white shadow-lg shadow-teal-100" 
+                  ? "text-white" 
                   : "text-gray-400 hover:text-[#141414]"
               )}
             >
-              {item}
+              <span className="relative z-10">{item}</span>
+              {activeSection === item.toLowerCase() && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute inset-0 bg-teal-500 rounded-full shadow-lg shadow-teal-100/50"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
             </a>
           ))}
-        </div>
+        </motion.nav>
+      </div>
 
-        {/* Mobile View */}
-        <div className="md:hidden flex items-center gap-2 px-4 py-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-teal-600">
-            {menuItems.find(i => i.toLowerCase() === activeSection) || "Menu"}
-          </span>
-          <div className="w-px h-4 bg-gray-100 mx-1" />
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-[#141414] transition-colors"
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="md:hidden fixed inset-0 z-[90] bg-white pt-32 px-10 flex flex-col items-start gap-8"
           >
-            {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-        </div>
-
-        {/* Mobile Dropdown */}
-        <AnimatePresence>
-          {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="md:hidden absolute top-full left-0 right-0 mt-3 p-3 bg-white/98 backdrop-blur-2xl border border-gray-100 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col gap-1"
-            >
+             <div className="flex flex-col gap-8 w-full">
                {menuItems.map((item) => (
                 <a 
                   key={item} 
-                  href={`/#${item.toLowerCase()}`}
-                  onClick={() => setIsMenuOpen(false)}
+                  href={`#${item.toLowerCase()}`}
+                  onClick={(e) => scrollToSection(e, item.toLowerCase())}
                   className={cn(
-                    "text-[10px] font-bold uppercase tracking-[0.2em] py-4 px-8 rounded-3xl transition-all text-center",
+                    "relative text-xl font-display font-medium uppercase tracking-[0.4em] transition-all",
                     activeSection === item.toLowerCase() 
-                      ? "bg-teal-500 text-white shadow-lg shadow-teal-100" 
-                      : "text-gray-400 hover:text-teal-600"
+                      ? "text-[#141414]" 
+                      : "text-gray-300"
                   )}
                 >
                   {item}
                 </a>
               ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.nav>
-    </div>
+             </div>
+
+             <div className="mt-auto mb-20 w-full">
+                <Link 
+                  to="/admin" 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="inline-flex items-center gap-3 bg-gray-50 text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] px-8 py-4 rounded-full border border-gray-100 hover:text-teal-600 hover:border-teal-100 transition-all shadow-sm"
+                >
+                  <Settings size={14} /> Dashboard
+                </Link>
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
