@@ -46,8 +46,6 @@ import {
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
-  signInWithRedirect,
-  getRedirectResult,
   GoogleAuthProvider, 
   signOut 
 } from "firebase/auth";
@@ -521,19 +519,10 @@ function Admin() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    return onAuthStateChanged(auth, (u) => {
       setUser(u);
       setIsLoading(false);
     });
-
-    getRedirectResult(auth).catch((err: any) => {
-      console.error("Redirect sign-in error:", err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError(err.message);
-      }
-    });
-
-    return unsub;
   }, []);
 
   const loginWithPopup = async () => {
@@ -543,23 +532,18 @@ function Admin() {
     } catch (err: any) {
       console.error("Login popup error:", err);
       if (err.code === 'auth/popup-blocked') {
-        setError("Popup was blocked by your browser. Please allow popups or use Redirect login.");
+        setError("Popup was blocked by your browser. Please allow popups to sign in.");
       } else {
         setError(err.message || "Failed to sign in.");
       }
     }
   };
 
-  const loginWithRedirect = () => {
-    setError(null);
-    signInWithRedirect(auth, new GoogleAuthProvider());
-  };
-
   const logout = () => signOut(auth);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#fdfdfd] flex items-center justify-center p-6">
         <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -567,39 +551,41 @@ function Admin() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#fdfdfd] flex items-center justify-center p-6">
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full bg-white/5 border border-white/10 p-12 rounded-3xl text-center"
+          className="max-w-md w-full bg-white border border-gray-100 p-12 rounded-[2.5rem] text-center shadow-2xl shadow-gray-200"
         >
-          <div className="w-20 h-20 bg-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-teal-500/20">
-            <LogIn size={40} className="text-black" />
+          <div className="w-24 h-24 bg-teal-50 rounded-[2rem] flex items-center justify-center mx-auto mb-10 border border-teal-100">
+            <LogIn size={40} className="text-teal-500" />
           </div>
-          <h2 className="text-3xl font-display font-bold text-white mb-4">Admin Access</h2>
-          <p className="text-white/40 mb-6">Sign in with your authorized Google account to manage your portfolio.</p>
+          <h2 className="text-4xl font-display font-bold text-[#141414] mb-4 italic tracking-tighter">Admin Portal</h2>
+          <p className="text-gray-400 font-medium mb-10 leading-relaxed">Secure access to the professional portfolio management system.</p>
           
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-bold">
+            <div className="mb-8 p-5 bg-red-50 border border-red-100 rounded-2xl text-red-500 text-xs font-bold leading-relaxed shadow-sm">
+              <span className="block uppercase tracking-widest mb-1 text-[10px] opacity-60">Authentication Error</span>
               {error}
             </div>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <button 
               onClick={loginWithPopup}
-              className="w-full bg-[#EA4335] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-[#d33426] transition-colors shadow-lg shadow-red-500/20"
+              className="w-full bg-[#141414] text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-4 hover:bg-teal-600 transition-all shadow-xl shadow-gray-200 group"
             >
-              <Mail size={20} />
-              Login with Google Popup
+              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                <Mail size={18} />
+              </div>
+              Authorize with Google
             </button>
-            <button 
-              onClick={loginWithRedirect}
-              className="w-full bg-white text-[#141414] border border-gray-200 font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
-            >
-              <ExternalLink size={20} />
-              Login with Google Redirect
-            </button>
+          </div>
+          
+          <div className="mt-12 pt-8 border-t border-gray-50 flex items-center justify-center gap-6">
+            <div className="w-10 h-0.5 bg-gray-100 rounded-full" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-200">Protected</span>
+            <div className="w-10 h-0.5 bg-gray-100 rounded-full" />
           </div>
         </motion.div>
       </div>
@@ -610,12 +596,26 @@ function Admin() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
-        <div className="text-center">
-          <h2 className="text-4xl font-display font-bold text-red-500 mb-4">Access Denied</h2>
-          <p className="text-white/40 mb-8">Unauthorized account: {user.email}</p>
-          <button onClick={logout} className="text-white underline">Sign Out</button>
-        </div>
+      <div className="min-h-screen bg-[#fdfdfd] flex items-center justify-center p-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md w-full bg-white border border-gray-100 p-12 rounded-[2.5rem] text-center shadow-2xl shadow-gray-200"
+        >
+          <div className="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-8 border border-red-100">
+             <LogOut size={32} className="text-red-500" />
+          </div>
+          <h2 className="text-3xl font-display font-bold text-[#141414] mb-3">Access Denied</h2>
+          <p className="text-gray-400 font-medium mb-8 leading-relaxed">
+            Account <span className="text-[#141414] font-bold">{user.email}</span> is not authorized to access this dashboard.
+          </p>
+          <button 
+            onClick={logout} 
+            className="w-full bg-gray-50 text-gray-400 font-bold py-4 rounded-xl border border-gray-100 hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all uppercase tracking-widest text-xs"
+          >
+            Switch Account
+          </button>
+        </motion.div>
       </div>
     );
   }
