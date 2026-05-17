@@ -177,23 +177,24 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) => void, currentUrl?: string, label: string }) {
   const [uploading, setUploading] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  const isConfigured = !!(cloudName && uploadPreset);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file type
     if (!file.type.startsWith('image/')) {
       alert("Please select an image file.");
       return;
     }
 
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-    if (!cloudName || !uploadPreset) {
-      alert("Cloudinary not configured. Please add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET to settings/environment.");
+    if (!isConfigured) {
+      alert("Cloudinary not configured. Go to Settings > Environment and add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.");
       return;
     }
 
@@ -227,48 +228,79 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
   };
 
   return (
-    <div className="space-y-4">
-      <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414] ml-2">{label}</label>
-      <div className="flex items-center gap-6 p-6 bg-white border border-gray-100 rounded-3xl shadow-sm">
-        <div 
-          onClick={() => !uploading && fileInputRef.current?.click()}
-          className={cn(
-            "w-24 h-24 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-teal-500 hover:bg-teal-50 transition-all group",
-            uploading && "opacity-50 cursor-wait"
-          )}
+    <div className="space-y-3">
+      <div className="flex justify-between items-center px-2">
+        <label className="text-[10px] font-bold uppercase tracking-widest text-[#141414]">{label}</label>
+        <button 
+          onClick={() => setShowUrlInput(!showUrlInput)}
+          className="text-[10px] font-bold text-teal-600 uppercase tracking-tight hover:underline"
         >
-          {uploading ? (
-            <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <Plus size={20} className="text-gray-300 group-hover:text-teal-500" />
-              <span className="text-[8px] font-bold uppercase tracking-tight text-gray-400 group-hover:text-teal-500">Pick Photo</span>
-            </>
-          )}
-        </div>
-        
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-          accept="image/*"
-        />
+          {showUrlInput ? "Use Upload" : "Enter URL instead"}
+        </button>
+      </div>
 
-        {currentUrl ? (
-          <div className="flex-1 space-y-2">
-            <div className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">Image Loaded</div>
-            <div className="h-12 w-full bg-gray-50 rounded-xl overflow-hidden border border-gray-100 flex items-center px-4">
-               <span className="text-[10px] text-gray-400 truncate font-mono">{currentUrl}</span>
+      {showUrlInput ? (
+        <input 
+          placeholder="https://example.com/image.jpg" 
+          className="w-full bg-white p-4 rounded-2xl outline-none border border-gray-100 focus:border-teal-500 transition-colors shadow-sm text-sm"
+          value={currentUrl || ""}
+          onChange={e => onUpload(e.target.value)}
+        />
+      ) : (
+        <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
+          <div className="p-6 flex items-center gap-6">
+            <div 
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              className={cn(
+                "w-24 h-24 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all group shrink-0",
+                uploading && "opacity-50 cursor-wait",
+                !isConfigured && "opacity-50 grayscale",
+                isConfigured && "hover:border-teal-500 hover:bg-teal-50"
+              )}
+            >
+              {uploading ? (
+                <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Plus size={20} className="text-gray-300 group-hover:text-teal-500" />
+                  <span className="text-[8px] font-bold uppercase tracking-tight text-gray-400 group-hover:text-teal-500">Pick Photo</span>
+                </>
+              )}
+            </div>
+            
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/*"
+            />
+
+            <div className="flex-1">
+              {!isConfigured ? (
+                <div className="space-y-1">
+                  <div className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Configuration Required</div>
+                  <p className="text-[10px] text-gray-400 leading-tight">
+                    Add <code className="bg-gray-50 px-1 rounded">VITE_CLOUDINARY_CLOUD_NAME</code> and <code className="bg-gray-50 px-1 rounded">VITE_CLOUDINARY_UPLOAD_PRESET</code> in Settings &gt; Environment to enable uploads.
+                  </p>
+                </div>
+              ) : currentUrl ? (
+                <div className="space-y-2">
+                  <div className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">Image Loaded</div>
+                  <div className="h-10 w-full bg-gray-50 rounded-xl overflow-hidden border border-gray-100 flex items-center px-4">
+                    <span className="text-[10px] text-gray-400 truncate font-mono">{currentUrl}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No file selected</div>
+                  <p className="text-[10px] text-gray-400">Tap the plus icon to upload from gallery.</p>
+                </div>
+              )}
             </div>
           </div>
-        ) : (
-          <div className="flex-1">
-            <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No file selected</div>
-            <p className="text-[10px] text-gray-400 mt-1">Tap the plus icon to upload from your gallery.</p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -740,14 +772,14 @@ function Admin() {
         </div>
 
         <div className="flex gap-4 mb-12 overflow-x-auto pb-4 no-scrollbar">
-          {["projects", "certificates", "experience", "settings", "messages"].map(tab => (
+          {["projects", "certificates", "experience", "settings", "messages", "setup"].map(tab => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
                 "px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] transition-all whitespace-nowrap",
                 activeTab === tab 
-                  ? "bg-[#141414] text-white shadow-xl shadow-gray-200" 
+                  ? "bg-teal-500 text-white shadow-xl shadow-teal-100" 
                   : "bg-white text-gray-400 border border-gray-100 hover:text-[#141414]"
               )}
             >
@@ -769,8 +801,74 @@ function Admin() {
             {activeTab === 'experience' && <AdminExperience />}
             {activeTab === 'settings' && <AdminSettings />}
             {activeTab === 'messages' && <AdminMessages />}
+            {activeTab === 'setup' && <AdminSetup />}
           </motion.div>
         </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function AdminSetup() {
+  return (
+    <div className="space-y-12">
+      <div>
+        <h2 className="text-3xl font-display font-bold mb-6 italic tracking-tight">Setup Assistant</h2>
+        <p className="text-gray-400 max-w-2xl mb-10 leading-relaxed font-medium">To keep your portfolio running smoothly, ensure the following configurations are applied in your external accounts.</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-12">
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center">
+              <Settings size={20} />
+            </div>
+            <h3 className="text-lg font-bold">1. Fix "Permission Denied"</h3>
+          </div>
+          <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
+             <p className="text-[11px] text-gray-500 leading-relaxed">If you see "Missing or insufficient permissions," copy the rules below and paste them into your <b>Firebase Console &gt; Firestore Database &gt; Rules</b>.</p>
+             <div className="bg-[#141414] p-4 rounded-xl overflow-hidden relative group">
+                <pre className="text-[9px] text-gray-400 font-mono overflow-x-auto max-h-40 no-scrollbar">
+{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.token.email == 'krishnan989756@gmail.com';
+    }
+    match /{document=**} { allow read, write: if false; }
+    match /projects/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /certificates/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /experiences/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /settings/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /guestbook/{id} { 
+      allow read: if isAdmin();
+      allow create: if request.resource.data.userName is string;
+    }
+  }
+}`}
+                </pre>
+             </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-10 h-10 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center">
+              <Plus size={20} />
+            </div>
+            <h3 className="text-lg font-bold">2. Enable Photo Uploads</h3>
+          </div>
+          <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
+             <p className="text-[11px] text-gray-500 leading-relaxed">I've used Cloudinary as a free alternative to Firebase Storage. To enable it:</p>
+             <ol className="text-[11px] text-gray-500 list-decimal pl-4 space-y-2">
+               <li>Create a free account at <a href="https://cloudinary.com" target="_blank" className="text-teal-600 underline">cloudinary.com</a></li>
+               <li>Find your <b>Cloud Name</b> and <b>Unsigned Upload Preset</b></li>
+               <li>Go to <b>Settings &gt; Environment</b> in this editor</li>
+               <li>Add <code>VITE_CLOUDINARY_CLOUD_NAME</code> and <code>VITE_CLOUDINARY_UPLOAD_PRESET</code></li>
+             </ol>
+          </div>
+        </div>
       </div>
     </div>
   );
