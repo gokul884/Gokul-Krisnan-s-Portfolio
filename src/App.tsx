@@ -110,65 +110,125 @@ const DEFAULT_SETTINGS: SiteSettings = {
 // --- Components ---
 
 function Nav() {
+  const [activeSection, setActiveSection] = useState('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const isAdminPage = location.pathname === '/admin';
 
-  return (
-    <nav className="fixed top-0 w-full z-50 bg-[#FAFAFA]/70 backdrop-blur-xl border-b border-gray-100/50">
-      <div className="max-w-7xl mx-auto px-6 h-16 sm:h-20 flex justify-between items-center">
-        <Link to="/" className="text-xl sm:text-2xl font-display font-bold tracking-tight italic group">
-          G<span className="text-teal-500 group-hover:text-[#141414] transition-colors">.</span> Krisnan
-        </Link>
+  useEffect(() => {
+    if (isAdminPage) return;
 
-        {isAdminPage ? (
-          <div className="flex items-center gap-4">
-             <Link to="/" className="text-[10px] font-bold uppercase tracking-widest text-[#141414] px-4 py-2 bg-white border border-gray-100 rounded-full shadow-sm hover:bg-gray-50 transition-all">
-               Live Site
-             </Link>
-          </div>
-        ) : (
-          <>
-            <div className="hidden md:flex gap-10 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
-              {["Home", "Works", "Experience", "Certificates", "Guestbook"].map((item) => (
+    const options = {
+      root: null,
+      rootMargin: '-40% 0px -40% 0px',
+      threshold: 0
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setActiveSection(entry.target.id);
+        }
+      });
+    }, options);
+
+    const sections = ['home', 'experience', 'works', 'certificates', 'guestbook'];
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [isAdminPage]);
+
+  if (isAdminPage) {
+    return (
+      <div className="fixed top-6 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none">
+        <motion.nav 
+          layout
+          className="bg-white/90 backdrop-blur-xl shadow-2xl shadow-gray-200/50 pointer-events-auto border border-gray-100 rounded-full px-6 py-2 flex items-center gap-6"
+        >
+          <Link to="/" className="text-xs font-display font-bold tracking-tight italic text-teal-600">
+            Admin Mode<span className="text-[#141414]">.</span>
+          </Link>
+          <Link to="/" className="text-[10px] font-bold uppercase tracking-widest text-[#141414] px-4 py-2 bg-teal-50 rounded-full hover:bg-teal-100 transition-all font-bold">
+            Live Site
+          </Link>
+        </motion.nav>
+      </div>
+    );
+  }
+
+  const menuItems = ["Home", "Experience", "Works", "Certificates", "Guestbook"];
+
+  return (
+    <div className="fixed top-6 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none">
+      <motion.nav
+        layout
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        className="bg-white/95 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] pointer-events-auto border border-gray-100 rounded-full p-1.5 flex items-center gap-1"
+      >
+        {/* Desktop Links */}
+        <div className="hidden md:flex items-center gap-1">
+          {menuItems.map((item) => (
+            <a 
+              key={item} 
+              href={`/#${item.toLowerCase()}`}
+              className={cn(
+                "text-[10px] font-bold uppercase tracking-[0.2em] px-6 py-3 rounded-full transition-all duration-300",
+                activeSection === item.toLowerCase() 
+                  ? "bg-teal-500 text-white shadow-lg shadow-teal-100" 
+                  : "text-gray-400 hover:text-[#141414]"
+              )}
+            >
+              {item}
+            </a>
+          ))}
+        </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden flex items-center gap-2 px-4 py-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-teal-600">
+            {menuItems.find(i => i.toLowerCase() === activeSection) || "Menu"}
+          </span>
+          <div className="w-px h-4 bg-gray-100 mx-1" />
+          <button 
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-[#141414] transition-colors"
+          >
+            {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+
+        {/* Mobile Dropdown */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="md:hidden absolute top-full left-0 right-0 mt-3 p-3 bg-white/98 backdrop-blur-2xl border border-gray-100 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col gap-1"
+            >
+               {menuItems.map((item) => (
                 <a 
                   key={item} 
                   href={`/#${item.toLowerCase()}`}
-                  className="hover:text-[#141414] transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-[0.2em] py-4 px-8 rounded-3xl transition-all text-center",
+                    activeSection === item.toLowerCase() 
+                      ? "bg-teal-500 text-white shadow-lg shadow-teal-100" 
+                      : "text-gray-400 hover:text-teal-600"
+                  )}
                 >
                   {item}
                 </a>
               ))}
-            </div>
-
-            <div className="flex items-center gap-6">
-              <button className="md:hidden text-[#141414]" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-      
-      {!isAdminPage && isMenuOpen && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="md:hidden bg-white/95 backdrop-blur-xl p-8 flex flex-col gap-6 border-b border-gray-100 shadow-xl"
-        >
-           {["Home", "Works", "Experience", "Certificates", "Guestbook"].map((item) => (
-              <a 
-                key={item} 
-                href={`/#${item.toLowerCase()}`}
-                onClick={() => setIsMenuOpen(false)} 
-                className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 hover:text-teal-500 transition-colors"
-              >
-                {item}
-              </a>
-            ))}
-        </motion.div>
-      )}
-    </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.nav>
+    </div>
   );
 }
 
@@ -314,6 +374,9 @@ function Home() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  
+  const [currentProjectIndex, setCurrentProjectIndex] = useState(0);
+  const [currentCertIndex, setCurrentCertIndex] = useState(0);
 
   useEffect(() => {
     const unsubProjects = onSnapshot(query(collection(db, "projects"), orderBy("order")), (snap) => {
@@ -339,100 +402,95 @@ function Home() {
     <div className="bg-[#fdfdfd] text-[#141414] selection:bg-teal-100">
       <Nav />
       
-      {/* Hero Section */}
-      <section id="home" className="pt-32 pb-20 px-6 overflow-hidden relative">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 items-center gap-12 relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="z-10"
-          >
-            <h1 className="text-7xl md:text-8xl font-display font-bold leading-[0.9] tracking-tighter mb-8">
-              Hey There,<br />I'm {settings.name.split(' ')[0]}
-            </h1>
-            <p className="text-lg text-gray-500 max-w-sm mb-10 leading-relaxed font-medium">
-              I design beautifully simple experiences, and I love what I do.
-            </p>
-            <div className="flex flex-col gap-4">
-              <div className="text-teal-600 font-bold tracking-tight">{settings.email}</div>
-              <div className="flex gap-4 items-center">
-                <div className="text-5xl font-display font-bold">2</div>
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-300 leading-tight">
-                  CURRENT<br />QUALIFICATIONS
+      <div id="home" className="scroll-mt-32">
+        {/* Hero Section */}
+        <section className="pt-32 pb-20 px-6 overflow-hidden relative">
+          <div className="max-w-7xl mx-auto grid md:grid-cols-2 items-center gap-12 relative">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="z-10"
+            >
+              <h1 className="text-7xl md:text-8xl font-display font-bold leading-[0.9] tracking-tighter mb-8">
+                Hey There,<br />I'm {settings.name.split(' ')[0]}
+              </h1>
+              <p className="text-lg text-gray-500 max-w-sm mb-10 leading-relaxed font-medium">
+                Crafting data-driven digital strategies,<br />
+                to amplify brand visibility and growth,<br />
+                with a passion for results and creativity.
+              </p>
+            </motion.div>
+
+            {/* Hero Image with Brushstroke */}
+            <div className="relative order-first md:order-last">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[140%] -z-10">
+                 <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-teal-600/20 fill-current rotate-12 scale-125">
+                  <path d="M44.7,-76.4C58.8,-69.2,71.8,-59.1,79.6,-45.8C87.4,-32.5,89.9,-16.3,88.5,-0.8C87.1,14.7,81.8,29.4,73.1,41.4C64.4,53.4,52.3,62.7,39.1,69.5C25.9,76.3,11.5,80.6,-2.8,85.5C-17.1,90.4,-31.2,95.9,-44.6,90.9C-57.9,85.9,-70.6,70.5,-78.4,54.2C-86.2,37.9,-89.1,20.7,-88.4,4.1C-87.7,-12.5,-83.4,-28.4,-74.6,-42.2C-65.8,-56.1,-52.5,-67.9,-38.3,-75C-24.1,-82.1,-9,-84.5,4.3,-91.9C17.6,-99.3,30.6,-83.5,44.7,-76.4Z" transform="translate(100 100)" />
+                </svg>
+              </div>
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="relative aspect-[4/5] w-full max-w-sm mx-auto overflow-hidden bg-brand-yellow rounded-b-[4rem] md:rounded-b-[6rem] shadow-2xl"
+              >
+                <img 
+                  src={settings.profileImageUrl} 
+                  alt={settings.name} 
+                  className="w-full h-full object-cover"
+                />
+              </motion.div>
+              <div className="absolute -bottom-4 right-0 sm:-bottom-6 sm:-right-6 md:right-0 bg-white p-4 sm:p-6 shadow-xl rounded-2xl border border-gray-100">
+                 <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-teal-600">
+                     <Briefcase size={24} />
+                   </div>
+                   <div>
+                     <div className="text-lg font-bold tracking-tight uppercase">Digital Marketer</div>
+                     <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">MBA Student</div>
+                   </div>
+                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Expertise Section */}
+        <section className="py-32 px-6">
+          <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-20 items-center">
+            <div className="space-y-6">
+              <div className="bg-white p-8 border border-gray-100 rounded-3xl flex items-center gap-8 group hover:shadow-lg transition-all">
+                <div className="w-16 h-16 bg-teal-500 rounded-2xl flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+                  <Settings size={32} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-1">Digital Marketer</h3>
+                  <p className="text-sm text-gray-400">SEO & Social Media</p>
+                </div>
+              </div>
+              <div className="bg-white p-8 border border-gray-100 rounded-3xl flex items-center gap-8 group hover:shadow-lg transition-all translate-x-4">
+                <div className="w-16 h-16 bg-yellow-500 rounded-2xl flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+                  <Github size={32} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-1">Tech Solutions</h3>
+                  <p className="text-sm text-gray-400">WordPress & Development</p>
                 </div>
               </div>
             </div>
-          </motion.div>
 
-          {/* Hero Image with Brushstroke */}
-          <div className="relative order-first md:order-last">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[140%] -z-10">
-               <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-teal-600/20 fill-current rotate-12 scale-125">
-                <path d="M44.7,-76.4C58.8,-69.2,71.8,-59.1,79.6,-45.8C87.4,-32.5,89.9,-16.3,88.5,-0.8C87.1,14.7,81.8,29.4,73.1,41.4C64.4,53.4,52.3,62.7,39.1,69.5C25.9,76.3,11.5,80.6,-2.8,85.5C-17.1,90.4,-31.2,95.9,-44.6,90.9C-57.9,85.9,-70.6,70.5,-78.4,54.2C-86.2,37.9,-89.1,20.7,-88.4,4.1C-87.7,-12.5,-83.4,-28.4,-74.6,-42.2C-65.8,-56.1,-52.5,-67.9,-38.3,-75C-24.1,-82.1,-9,-84.5,4.3,-91.9C17.6,-99.3,30.6,-83.5,44.7,-76.4Z" transform="translate(100 100)" />
-              </svg>
-            </div>
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="relative aspect-[4/5] w-full max-w-sm mx-auto overflow-hidden bg-brand-yellow rounded-b-[4rem] md:rounded-b-[6rem] shadow-2xl"
-            >
-              <img 
-                src={settings.profileImageUrl} 
-                alt={settings.name} 
-                className="w-full h-full object-cover"
-              />
-            </motion.div>
-            <div className="absolute -bottom-6 -right-6 md:right-0 bg-white p-6 shadow-xl rounded-2xl hidden md:block border border-gray-100">
-               <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-teal-600">
-                   <Briefcase size={24} />
-                 </div>
-                 <div>
-                   <div className="text-lg font-bold tracking-tight uppercase">Digital Marketer</div>
-                   <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">MBA Student</div>
-                 </div>
-               </div>
+            <div>
+               <h2 className="text-5xl font-display font-bold mb-8 leading-tight">What do I help?</h2>
+               <p className="text-gray-500 leading-relaxed mb-10 max-w-md font-medium">
+                 {settings.bio}
+               </p>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Expertise Section */}
-      <section className="py-32 px-6">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-20 items-center">
-          <div className="space-y-6">
-            <div className="bg-white p-8 border border-gray-100 rounded-3xl flex items-center gap-8 group hover:shadow-lg transition-all">
-              <div className="w-16 h-16 bg-teal-500 rounded-2xl flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                <Settings size={32} />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-1">Digital Marketer</h3>
-                <p className="text-sm text-gray-400">SEO & Social Media</p>
-              </div>
-            </div>
-            <div className="bg-white p-8 border border-gray-100 rounded-3xl flex items-center gap-8 group hover:shadow-lg transition-all translate-x-4">
-              <div className="w-16 h-16 bg-yellow-500 rounded-2xl flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                <Github size={32} />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-1">Tech Solutions</h3>
-                <p className="text-sm text-gray-400">WordPress & Development</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-             <h2 className="text-5xl font-display font-bold mb-8 leading-tight">What do I help?</h2>
-             <p className="text-gray-500 leading-relaxed mb-10 max-w-md font-medium">
-               {settings.bio}
-             </p>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* Experience Timeline */}
-      <section id="experience" className="py-32 px-6 bg-[#fafafa]">
+      <section id="experience" className="py-32 px-6 bg-[#fafafa] scroll-mt-32">
          <div className="max-w-7xl mx-auto">
             <div className="text-center mb-20">
                <h2 className="text-5xl font-display font-bold mb-4">Work Experience</h2>
@@ -458,97 +516,176 @@ function Home() {
          </div>
       </section>
 
-      {/* Latest Works */}
-      <section id="works" className="py-32 px-6 bg-white">
+      {/* Latest Works Carousel */}
+      <section id="works" className="py-32 px-6 bg-white overflow-hidden scroll-mt-32">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-end mb-20">
-            <div>
+          <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-16 gap-6">
+            <div className="text-center md:text-left">
               <h2 className="text-5xl font-display font-bold mb-4">Latest Works</h2>
               <p className="text-gray-400">Perfect solution for digital experience</p>
             </div>
-            <a href="#" className="hidden md:block text-xs font-bold uppercase tracking-widest text-teal-600 border-b-2 border-teal-600 pb-1">Explore More Works</a>
+            
+            <div className="flex gap-4">
+               <button 
+                onClick={() => setCurrentProjectIndex(prev => (prev === 0 ? projects.length - 1 : prev - 1))}
+                className="w-12 h-12 rounded-full border border-gray-100 flex items-center justify-center text-gray-400 hover:text-teal-600 hover:border-teal-100 transition-all shadow-sm"
+               >
+                 <ChevronRight size={20} className="rotate-180" />
+               </button>
+               <button 
+                onClick={() => setCurrentProjectIndex(prev => (prev === projects.length - 1 ? 0 : prev + 1))}
+                className="w-12 h-12 rounded-full border border-gray-100 flex items-center justify-center text-gray-400 hover:text-teal-600 hover:border-teal-100 transition-all shadow-sm"
+               >
+                 <ChevronRight size={20} />
+               </button>
+            </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-12">
-            {projects.map((project, idx) => (
-              <motion.div 
-                key={project.id}
-                whileHover={{ y: -10 }}
-                className="group cursor-pointer"
-              >
-                <div className="aspect-[4/5] bg-gray-50 rounded-[2.5rem] overflow-hidden mb-8 relative border border-gray-100 flex items-center justify-center p-8">
-                  {project.imageUrl ? (
-                    <img src={project.imageUrl} alt={project.title} className="w-full h-full object-cover rounded-2xl grayscale group-hover:grayscale-0 transition-all duration-500" />
-                  ) : (
-                    <div className="w-full h-full bg-white rounded-2xl shadow-xl p-10 flex flex-col items-center justify-center text-gray-200">
-                       <Cpu size={80} className="mb-6 opacity-20" />
-                       <div className="text-sm font-bold uppercase tracking-widest opacity-20">No Image</div>
-                    </div>
-                  )}
-                  <div className="absolute inset-x-8 bottom-8">
-                     <div className="px-4 py-2 bg-teal-500 text-white rounded-full text-[10px] font-bold uppercase tracking-widest inline-block mb-3">
-                       Project {idx + 1}
+          <div className="relative max-w-5xl mx-auto">
+            <AnimatePresence mode="wait">
+              {projects.length > 0 ? (
+                <motion.div 
+                  key={projects[currentProjectIndex].id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.4 }}
+                  className="grid lg:grid-cols-2 gap-12 items-center"
+                >
+                  <div className="aspect-[4/5] sm:aspect-video lg:aspect-square bg-gray-50 rounded-[4rem] overflow-hidden relative border border-gray-100 shadow-2xl p-6 sm:p-12">
+                     <div className="absolute top-8 left-8 z-10">
+                        <div className="px-4 py-2 bg-teal-500 text-white rounded-full text-[10px] font-bold uppercase tracking-widest inline-block shadow-lg">
+                          Project {currentProjectIndex + 1} of {projects.length}
+                        </div>
                      </div>
+                    {projects[currentProjectIndex].imageUrl ? (
+                      <img src={projects[currentProjectIndex].imageUrl} alt={projects[currentProjectIndex].title} className="w-full h-full object-cover rounded-3xl" />
+                    ) : (
+                      <div className="w-full h-full bg-white rounded-3xl flex flex-col items-center justify-center text-gray-200">
+                         <Cpu size={80} className="mb-6 opacity-20" />
+                         <div className="text-sm font-bold uppercase tracking-widest opacity-20">No Image Preview</div>
+                      </div>
+                    )}
                   </div>
+
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="text-4xl sm:text-6xl font-display font-bold mb-6 italic tracking-tight">{projects[currentProjectIndex].title}</h3>
+                      <p className="text-gray-500 text-lg leading-relaxed font-medium">{projects[currentProjectIndex].description}</p>
+                    </div>
+                    {projects[currentProjectIndex].techStack && (
+                      <div className="flex flex-wrap gap-2">
+                        {projects[currentProjectIndex].techStack.map(tech => (
+                          <span key={tech} className="text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-50 px-4 py-2 rounded-full border border-gray-100">{tech}</span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="pt-6">
+                      <a 
+                        href={projects[currentProjectIndex].liveUrl || "#"} 
+                        target="_blank" 
+                        rel="referrer"
+                        className="inline-flex items-center gap-3 bg-[#141414] text-white text-[10px] font-bold uppercase tracking-[0.2em] px-10 py-5 rounded-full hover:bg-teal-600 transition-all shadow-xl shadow-gray-200"
+                      >
+                        Launch Project <ExternalLink size={14} />
+                      </a>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-[3rem] text-gray-300 font-medium h-[400px] flex items-center justify-center">
+                  No projects found. Add some in the Admin Panel!
                 </div>
-                <h3 className="text-2xl font-bold mb-2">{project.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{project.description}</p>
-              </motion.div>
-            ))}
-            {projects.length === 0 && (
-              <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-100 rounded-[3rem] text-gray-300 font-medium">
-                No projects found. Add some in the Admin Panel!
-              </div>
-            )}
+              )}
+            </AnimatePresence>
+            
+            {/* Carousel Indicators */}
+            <div className="flex justify-center gap-2 mt-16">
+              {projects.map((_, i) => (
+                <button 
+                  key={i} 
+                  onClick={() => setCurrentProjectIndex(i)}
+                  className={cn(
+                    "h-1 rounded-full transition-all duration-500",
+                    i === currentProjectIndex ? "w-8 bg-teal-500" : "w-2 bg-gray-100 hover:bg-gray-200"
+                  )}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Certificates Section */}
-      <section id="certificates" className="py-32 px-6 bg-[#fafafa]">
+      {/* Certificates Carousel */}
+      <section id="certificates" className="py-32 px-6 bg-[#fafafa] scroll-mt-32">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-5xl font-display font-bold mb-4">Certifications</h2>
             <p className="text-gray-400 font-medium">Validating my expertise through global standards</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {certificates.map((cert) => (
-              <motion.div 
-                key={cert.id}
-                whileHover={{ scale: 1.02 }}
-                className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all"
-              >
-                <div className="aspect-video bg-gray-50 rounded-2xl mb-6 overflow-hidden relative group">
-                  {cert.imageUrl ? (
-                    <img src={cert.imageUrl} alt={cert.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-200">
-                      <ExternalLink size={40} className="opacity-20" />
-                    </div>
-                  )}
-                  <div className="absolute inset-x-4 bottom-4 translate-y-full group-hover:translate-y-0 transition-transform">
-                     <div className="bg-teal-500 text-white text-[10px] font-bold uppercase py-2 px-4 rounded-full text-center">
-                        Verified Credentials
-                     </div>
+          <div className="relative max-w-4xl mx-auto">
+             <AnimatePresence mode="wait">
+              {certificates.length > 0 ? (
+                <motion.div 
+                  key={certificates[currentCertIndex].id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.05 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-white p-8 sm:p-12 rounded-[4rem] border border-gray-100 shadow-2xl flex flex-col items-center text-center relative"
+                >
+                  <div className="w-20 h-20 bg-teal-50 rounded-3xl flex items-center justify-center text-teal-600 mb-8">
+                     <Settings size={40} />
                   </div>
+                  
+                  <div className="space-y-4 mb-10">
+                    <h3 className="text-3xl sm:text-4xl font-display font-bold leading-tight">{certificates[currentCertIndex].title}</h3>
+                    <div className="text-teal-600 text-sm font-bold uppercase tracking-[0.3em]">{certificates[currentCertIndex].provider}</div>
+                    <div className="text-gray-300 text-[10px] font-bold uppercase tracking-widest">{certificates[currentCertIndex].issueDate || "Credential Active"}</div>
+                  </div>
+
+                  <div className="w-full aspect-video bg-gray-50 rounded-3xl overflow-hidden border border-gray-100 group mb-10">
+                    {certificates[currentCertIndex].imageUrl ? (
+                      <img src={certificates[currentCertIndex].imageUrl} alt={certificates[currentCertIndex].title} className="w-full h-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0 scale-105 group-hover:scale-100" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-200">
+                        <ExternalLink size={60} className="opacity-20" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-6">
+                    <button 
+                      onClick={() => setCurrentCertIndex(prev => (prev === 0 ? certificates.length - 1 : prev - 1))}
+                      className="p-4 rounded-2xl bg-gray-50 text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-all"
+                    >
+                      <ChevronRight size={20} className="rotate-180" />
+                    </button>
+                    <button 
+                      onClick={() => setCurrentCertIndex(prev => (prev === certificates.length - 1 ? 0 : prev + 1))}
+                      className="p-4 rounded-2xl bg-[#141414] text-white hover:bg-teal-600 transition-all"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+
+                  <div className="absolute top-12 right-12 text-[10px] font-bold text-gray-200 uppercase tracking-widest">
+                    {currentCertIndex + 1} / {certificates.length}
+                  </div>
+                </motion.div>
+              ) : (
+                <div className="py-20 text-center border-2 border-dashed border-gray-200 rounded-[3rem] text-gray-300 font-medium italic">
+                  Certificates are being digitized. Please check back soon!
                 </div>
-                <h3 className="font-bold text-lg mb-1 leading-tight">{cert.title}</h3>
-                <div className="text-teal-600 text-xs font-bold uppercase tracking-widest mb-4">{cert.provider}</div>
-                <div className="text-gray-300 text-[10px] font-bold">{cert.issueDate || "Date N/A"}</div>
-              </motion.div>
-            ))}
-            {certificates.length === 0 && (
-               <div className="col-span-full py-20 text-center border-2 border-dashed border-gray-200 rounded-[3rem] text-gray-300 font-medium italic">
-                Wait for it... certificates are being uploaded!
-              </div>
-            )}
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </section>
 
       {/* Guestbook Hub */}
-      <section id="guestbook" className="py-32 px-6 bg-[#fafafa]">
+      <section id="guestbook" className="py-32 px-6 bg-[#fafafa] scroll-mt-32">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-5xl font-display font-bold mb-8 leading-tight">Digital Connections</h2>
           <p className="text-gray-400 mb-10 leading-relaxed font-medium mx-auto max-w-lg">
