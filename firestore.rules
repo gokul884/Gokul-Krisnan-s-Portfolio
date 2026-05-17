@@ -37,6 +37,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Experiences
+    match /experiences/{expId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Guestbook
     match /guestbook/{messageId} {
       allow read: if isAdmin();

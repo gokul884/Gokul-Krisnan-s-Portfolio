@@ -71,6 +71,15 @@ interface Certificate {
   imageUrl?: string;
 }
 
+interface Experience {
+  id: string;
+  year: string;
+  title: string;
+  company: string;
+  description: string;
+  order: number;
+}
+
 interface GuestMessage {
   id: string;
   userName: string;
@@ -169,7 +178,7 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [messages, setMessages] = useState<GuestMessage[]>([]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
@@ -181,11 +190,15 @@ function Home() {
       setCertificates(snap.docs.map(d => ({ id: d.id, ...d.data() } as Certificate)));
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'certificates'));
 
+    const unsubExp = onSnapshot(query(collection(db, "experiences"), orderBy("order")), (snap) => {
+      setExperiences(snap.docs.map(d => ({ id: d.id, ...d.data() } as Experience)));
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'experiences'));
+
     const unsubSettings = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) setSettings(snap.data() as SiteSettings);
     });
 
-    return () => { unsubProjects(); unsubCerts(); unsubSettings(); };
+    return () => { unsubProjects(); unsubCerts(); unsubExp(); unsubSettings(); };
   }, []);
 
   return (
@@ -293,19 +306,20 @@ function Home() {
             </div>
             
             <div className="max-w-3xl mx-auto space-y-12 relative before:absolute before:left-[11px] before:top-4 before:bottom-4 before:w-0.5 before:bg-gray-200">
-               {[
-                 { year: "2025 - 2025", title: "HR Intern", company: "RND Private Limited", desc: "Conducted initial candidate screening and maintained employee records." },
-                 { year: "2025 - 2027", title: "MBA Scholar", company: "Firebird FIRM", desc: "Pursuing Master of Business Administration to bridge tech and management." },
-                 { year: "2021 - 2024", title: "BCA Graduate", company: "Mahendra College", desc: "Foundation in computer applications and technical problem-solving." }
-               ].map((item, idx) => (
-                 <div key={idx} className="relative pl-12">
+               {experiences.map((item) => (
+                 <div key={item.id} className="relative pl-12">
                     <div className="absolute left-0 top-1 w-6 h-6 rounded-full border-4 border-[#fafafa] bg-teal-500 shadow-sm" />
                     <div className="text-xs font-bold text-teal-600 mb-2 uppercase tracking-widest">{item.year}</div>
                     <h3 className="text-2xl font-bold mb-1">{item.title}</h3>
                     <p className="text-sm font-bold text-gray-300 mb-3">{item.company}</p>
-                    <p className="text-gray-500 text-sm leading-relaxed max-w-xl">{item.desc}</p>
+                    <p className="text-gray-500 text-sm leading-relaxed max-w-xl">{item.description}</p>
                  </div>
                ))}
+               {experiences.length === 0 && (
+                 <div className="text-center py-10 text-gray-300 font-medium italic">
+                    Career timeline is being updated...
+                 </div>
+               )}
             </div>
          </div>
       </section>
@@ -571,13 +585,13 @@ function Admin() {
         </div>
 
         <div className="flex gap-4 mb-12 overflow-x-auto pb-2">
-          {["projects", "certificates", "settings", "messages"].map(tab => (
+          {["projects", "certificates", "experience", "settings", "messages"].map(tab => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                "px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all",
-                activeTab === tab ? "bg-teal-500 text-black" : "bg-white/5 text-white/40 hover:text-white"
+                "px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap",
+                activeTab === tab ? "bg-teal-500 text-black shadow-lg shadow-teal-500/20" : "bg-white/5 text-white/40 hover:text-white"
               )}
             >
               {tab}
@@ -588,12 +602,13 @@ function Admin() {
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
           >
             {activeTab === 'projects' && <AdminProjects />}
             {activeTab === 'certificates' && <AdminCertificates />}
+            {activeTab === 'experience' && <AdminExperience />}
             {activeTab === 'settings' && <AdminSettings />}
             {activeTab === 'messages' && <AdminMessages />}
           </motion.div>
@@ -641,55 +656,63 @@ function AdminCertificates() {
       </button>
 
       {editing && (
-        <div className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6">
-          <input 
-            placeholder="Certificate Title" 
-            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
-            value={editing.title}
-            onChange={e => setEditing({...editing, title: e.target.value})}
-          />
-          <input 
-            placeholder="Provider (e.g. Google, HubSpot)" 
-            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
-            value={editing.provider}
-            onChange={e => setEditing({...editing, provider: e.target.value})}
-          />
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6"
+        >
+          <div className="grid md:grid-cols-2 gap-4">
+            <input 
+              placeholder="Certificate Title" 
+              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+              value={editing.title}
+              onChange={e => setEditing({...editing, title: e.target.value})}
+            />
+            <input 
+              placeholder="Provider (e.g. Google, HubSpot)" 
+              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+              value={editing.provider}
+              onChange={e => setEditing({...editing, provider: e.target.value})}
+            />
+          </div>
           <div className="grid md:grid-cols-2 gap-4">
             <input 
               placeholder="Issue Date (e.g. May 2024)" 
-              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
+              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
               value={editing.issueDate}
               onChange={e => setEditing({...editing, issueDate: e.target.value})}
             />
             <input 
               placeholder="Image/File URL" 
-              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
+              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
               value={editing.imageUrl}
               onChange={e => setEditing({...editing, imageUrl: e.target.value})}
             />
           </div>
           <div className="flex gap-4">
-            <button onClick={save} className="flex-1 bg-teal-500 text-black font-bold py-4 rounded-xl">Save Certificate</button>
-            <button onClick={() => setEditing(null)} className="flex-1 bg-white/5 font-bold py-4 rounded-xl">Cancel</button>
+            <button onClick={save} className="flex-1 bg-teal-500 text-black font-bold py-4 rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2">
+              <Save size={18} /> Save Certificate
+            </button>
+            <button onClick={() => setEditing(null)} className="flex-1 bg-white/5 font-bold py-4 rounded-xl hover:bg-white/10 transition-all">Cancel</button>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      <div className="grid gap-4">
+      <div className="grid md:grid-cols-2 gap-4">
         {certs.map(c => (
-          <div key={c.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
+          <div key={c.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5 group hover:border-white/10 transition-all">
              <div className="flex items-center gap-4">
-               <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center">
-                 {c.imageUrl ? <img src={c.imageUrl} className="w-full h-full object-cover rounded-lg" /> : <Briefcase size={20} className="opacity-20" />}
+               <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 overflow-hidden">
+                 {c.imageUrl ? <img src={c.imageUrl} className="w-full h-full object-cover" /> : <Briefcase size={20} className="opacity-10" />}
                </div>
                <div>
                  <h4 className="font-bold">{c.title}</h4>
                  <p className="text-xs text-teal-600 uppercase font-bold tracking-widest">{c.provider}</p>
                </div>
              </div>
-             <div className="flex gap-2">
-               <button onClick={() => setEditing(c)} className="p-2 text-white/40 hover:text-teal-500"><Edit size={16} /></button>
-               <button onClick={() => remove(c.id)} className="p-2 text-white/40 hover:text-red-500"><Trash2 size={16} /></button>
+             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+               <button onClick={() => setEditing(c)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-teal-500 transition-all"><Edit size={16} /></button>
+               <button onClick={() => remove(c.id)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
              </div>
           </div>
         ))}
@@ -729,43 +752,178 @@ function AdminProjects() {
   return (
     <div className="space-y-8">
       <button 
-        onClick={() => setEditing({ title: "", description: "", order: projects.length })}
-        className="w-full p-8 border-2 border-dashed border-white/10 rounded-3xl flex items-center justify-center gap-2 text-white/40 hover:text-white hover:border-teal-500 transition-all"
+        onClick={() => setEditing({ title: "", description: "", order: projects.length, imageUrl: "", liveUrl: "", githubUrl: "", techStack: [] })}
+        className="w-full p-8 border-2 border-dashed border-white/10 rounded-3xl flex items-center justify-center gap-2 text-white/40 hover:text-white hover:border-teal-500 transition-all font-bold"
       >
-        <Plus /> Add New Project
+        <Plus size={20} /> Add New Project
       </button>
 
       {editing && (
-        <div className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6"
+        >
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-white/30">Basic Info</label>
+              <input 
+                placeholder="Project Title" 
+                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+                value={editing.title}
+                onChange={e => setEditing({...editing, title: e.target.value})}
+              />
+              <textarea 
+                placeholder="Description" 
+                rows={4}
+                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors resize-none"
+                value={editing.description}
+                onChange={e => setEditing({...editing, description: e.target.value})}
+              />
+            </div>
+            <div className="space-y-4">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-white/30">Media & Links</label>
+              <input 
+                placeholder="Image URL" 
+                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+                value={editing.imageUrl || ""}
+                onChange={e => setEditing({...editing, imageUrl: e.target.value})}
+              />
+              <input 
+                placeholder="Live URL" 
+                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+                value={editing.liveUrl || ""}
+                onChange={e => setEditing({...editing, liveUrl: e.target.value})}
+              />
+              <input 
+                placeholder="Github URL" 
+                className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+                value={editing.githubUrl || ""}
+                onChange={e => setEditing({...editing, githubUrl: e.target.value})}
+              />
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <button onClick={save} className="flex-1 bg-teal-500 text-black font-bold py-4 rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2">
+              <Save size={18} /> Save Project
+            </button>
+            <button onClick={() => setEditing(null)} className="flex-1 bg-white/5 font-bold py-4 rounded-xl hover:bg-white/10 transition-all">Cancel</button>
+          </div>
+        </motion.div>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {projects.map(p => (
+          <div key={p.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5 group hover:border-white/10 transition-all">
+             <div className="flex items-center gap-4">
+               <div className="w-16 h-16 bg-white/5 rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
+                 {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : <Cpu size={24} className="opacity-10" />}
+               </div>
+               <div>
+                 <h4 className="font-bold text-lg">{p.title}</h4>
+                 <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Order: {p.order}</p>
+               </div>
+             </div>
+             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+               <button onClick={() => setEditing(p)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-teal-500 transition-all"><Edit size={16} /></button>
+               <button onClick={() => remove(p.id)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
+             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminExperience() {
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [editing, setEditing] = useState<Partial<Experience> | null>(null);
+
+  useEffect(() => {
+    return onSnapshot(query(collection(db, "experiences"), orderBy("order")), (snap) => {
+      setExperiences(snap.docs.map(d => ({ id: d.id, ...d.data() } as Experience)));
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'experiences'));
+  }, []);
+
+  const save = async () => {
+    if (!editing?.title || !editing?.company) return;
+    try {
+      if (editing.id) {
+        await updateDoc(doc(db, "experiences", editing.id), editing);
+      } else {
+        await addDoc(collection(db, "experiences"), { ...editing, order: experiences.length });
+      }
+      setEditing(null);
+    } catch (err) { handleFirestoreError(err, OperationType.WRITE, 'experiences'); }
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm('Are you sure?')) return;
+    try { await deleteDoc(doc(db, "experiences", id)); } 
+    catch (err) { handleFirestoreError(err, OperationType.DELETE, 'experiences'); }
+  };
+
+  return (
+    <div className="space-y-8">
+      <button 
+        onClick={() => setEditing({ title: "", company: "", year: "", description: "", order: experiences.length })}
+        className="w-full p-8 border-2 border-dashed border-white/10 rounded-3xl flex items-center justify-center gap-2 text-white/40 hover:text-white hover:border-teal-500 transition-all font-bold"
+      >
+        <Plus size={20} /> Add New Experience
+      </button>
+
+      {editing && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6"
+        >
+          <div className="grid md:grid-cols-2 gap-4">
+            <input 
+              placeholder="Role Title" 
+              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+              value={editing.title}
+              onChange={e => setEditing({...editing, title: e.target.value})}
+            />
+            <input 
+              placeholder="Company/Institution" 
+              className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+              value={editing.company}
+              onChange={e => setEditing({...editing, company: e.target.value})}
+            />
+          </div>
           <input 
-            placeholder="Title" 
-            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
-            value={editing.title}
-            onChange={e => setEditing({...editing, title: e.target.value})}
+            placeholder="Year/Period (e.g. 2021 - 2024)" 
+            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+            value={editing.year}
+            onChange={e => setEditing({...editing, year: e.target.value})}
           />
           <textarea 
             placeholder="Description" 
-            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
+            rows={4}
+            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors resize-none"
             value={editing.description}
             onChange={e => setEditing({...editing, description: e.target.value})}
           />
           <div className="flex gap-4">
-            <button onClick={save} className="flex-1 bg-teal-500 text-black font-bold py-4 rounded-xl">Save Project</button>
-            <button onClick={() => setEditing(null)} className="flex-1 bg-white/5 font-bold py-4 rounded-xl">Cancel</button>
+            <button onClick={save} className="flex-1 bg-teal-500 text-black font-bold py-4 rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2">
+              <Save size={18} /> Save Experience
+            </button>
+            <button onClick={() => setEditing(null)} className="flex-1 bg-white/5 font-bold py-4 rounded-xl hover:bg-white/10 transition-all">Cancel</button>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      <div className="grid gap-4">
-        {projects.map(p => (
-          <div key={p.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
+      <div className="space-y-4">
+        {experiences.map(e => (
+          <div key={e.id} className="p-6 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5 group hover:border-white/10 transition-all">
              <div>
-               <h4 className="font-bold">{p.title}</h4>
-               <p className="text-xs text-white/20">{p.description.slice(0, 50)}...</p>
+               <h4 className="font-bold text-lg">{e.title}</h4>
+               <p className="text-teal-500 text-xs font-bold uppercase tracking-widest">{e.company} • {e.year}</p>
              </div>
-             <div className="flex gap-2">
-               <button onClick={() => setEditing(p)} className="p-2 text-white/40 hover:text-teal-500"><Edit size={16} /></button>
-               <button onClick={() => remove(p.id)} className="p-2 text-white/40 hover:text-red-500"><Trash2 size={16} /></button>
+             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+               <button onClick={() => setEditing(e)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-teal-500 transition-all"><Edit size={16} /></button>
+               <button onClick={() => remove(e.id)} className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
              </div>
           </div>
         ))}
@@ -794,33 +952,57 @@ function AdminSettings() {
   };
 
   return (
-    <div className="max-w-2xl space-y-6">
-      {Object.entries(settings).map(([key, val]) => (
-        <div key={key}>
-          <label className="text-xs font-bold uppercase tracking-widest text-white/20 mb-2 block">{key}</label>
-          {key === 'bio' ? (
-             <textarea 
-               value={val} 
-               onChange={e => setSettings({...settings, [key]: e.target.value})}
-               className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 h-32"
-             />
-          ) : (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-4xl grid md:grid-cols-2 gap-8"
+    >
+      <div className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6">
+        <label className="text-[10px] font-bold uppercase tracking-widest text-teal-500 block">Personal Information</label>
+        {['name', 'title', 'location', 'phone', 'email'].map(field => (
+           <div key={field}>
+             <label className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-2 block">{field}</label>
              <input 
-               value={val} 
-               onChange={e => setSettings({...settings, [key]: e.target.value})}
-               className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500"
+               value={(settings as any)[field]} 
+               onChange={e => setSettings({...settings, [field]: e.target.value})}
+               className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
              />
-          )}
+           </div>
+        ))}
+      </div>
+
+      <div className="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-6">
+        <label className="text-[10px] font-bold uppercase tracking-widest text-teal-500 block">Biographical & Profile</label>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-2 block">Bio</label>
+          <textarea 
+            value={settings.bio} 
+            onChange={e => setSettings({...settings, bio: e.target.value})}
+            rows={6}
+            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors resize-none"
+          />
         </div>
-      ))}
-      <button 
-        onClick={save} 
-        disabled={loading}
-        className="w-full bg-teal-500 text-black font-bold py-4 rounded-xl hover:bg-teal-400 transition-colors"
-      >
-        {loading ? "Saving..." : "Save Global Settings"}
-      </button>
-    </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-2 block">Profile Image URL</label>
+          <input 
+            value={settings.profileImageUrl} 
+            onChange={e => setSettings({...settings, profileImageUrl: e.target.value})}
+            className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/10 focus:border-teal-500 transition-colors"
+          />
+          <div className="mt-4 w-20 h-20 bg-white/5 rounded-full overflow-hidden border border-white/10">
+            <img src={settings.profileImageUrl} className="w-full h-full object-cover" />
+          </div>
+        </div>
+        
+        <button 
+          onClick={save} 
+          disabled={loading}
+          className="w-full bg-teal-500 text-black font-bold py-4 rounded-xl hover:bg-teal-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-500/20"
+        >
+          {loading ? "Saving..." : <><Save size={18}/> Save Global Settings</>}
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
