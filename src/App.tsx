@@ -256,16 +256,6 @@ function Nav() {
                 </a>
               ))}
              </div>
-
-             <div className="mt-auto mb-20 w-full">
-                <Link 
-                  to="/admin" 
-                  onClick={() => setIsMenuOpen(false)}
-                  className="inline-flex items-center gap-3 bg-gray-50 text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] px-8 py-4 rounded-full border border-gray-100 hover:text-teal-600 hover:border-teal-100 transition-all shadow-sm"
-                >
-                  <Settings size={14} /> Dashboard
-                </Link>
-             </div>
           </motion.div>
         )}
       </AnimatePresence>
