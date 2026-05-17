@@ -533,6 +533,8 @@ function Admin() {
       console.error("Login popup error:", err);
       if (err.code === 'auth/popup-blocked') {
         setError("Popup was blocked by your browser. Please allow popups to sign in.");
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError("Domain not authorized. Copy the URL from your browser address bar and add it to 'Authorized Domains' in your Firebase Console (Authentication > Settings).");
       } else {
         setError(err.message || "Failed to sign in.");
       }
