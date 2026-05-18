@@ -425,42 +425,28 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-[#0a0a0a]/98 backdrop-blur-md flex flex-col items-center justify-center p-4 md:p-8"
+            className="fixed inset-0 z-[1000] bg-[#0a0a0a]/98 backdrop-blur-md flex flex-col items-center justify-center p-2 lg:p-8"
           >
-            {/* Top Toolbar */}
-            <div className="w-full max-w-5xl flex items-center justify-between mb-4 px-2">
-              <div className="flex items-center gap-3">
-                <div className="bg-teal-500/10 p-2 rounded-xl">
-                  <Scissors size={20} className="text-teal-500" />
-                </div>
-                <div>
-                  <h3 className="text-white font-display font-medium text-sm tracking-widest uppercase">Professional Crop</h3>
-                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-tighter">Adjust your certificate scan</p>
-                </div>
+            {/* Top Toolbar - Minimal & No Icons */}
+            <div className="w-full max-w-6xl flex items-center justify-between mb-4 lg:mb-6 px-4">
+              <div className="flex flex-col">
+                <h3 className="text-white font-display font-medium text-sm lg:text-base tracking-[0.3em] uppercase">Document Adjustment</h3>
+                <div className="h-[1px] w-8 bg-teal-500 mt-1" />
               </div>
-              <div className="flex items-center gap-2">
-                 <button 
-                  onClick={resetCropper}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-all border border-white/5 text-[10px] uppercase font-bold tracking-widest"
-                >
-                  <RefreshCw size={14} /> Reset
-                </button>
-                <button 
-                  onClick={() => setImageToCrop(null)}
-                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full text-white transition-all border border-white/5"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+              <button 
+                onClick={() => setImageToCrop(null)}
+                className="text-white/40 hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest active:scale-95"
+              >
+                Close
+              </button>
             </div>
 
-            <div className="relative w-full max-w-5xl flex flex-col lg:flex-row gap-6">
-              {/* Main Cropper Stage */}
-              <div className="relative flex-1 aspect-square md:aspect-[4/3] bg-black rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10">
+            <div className="relative w-full max-w-6xl flex flex-col lg:flex-row gap-4 h-[calc(100vh-140px)] lg:h-[82vh] items-stretch">
+              {/* Main Cropper Stage - Expanded */}
+              <div className="relative flex-[3] bg-black rounded-xl lg:rounded-[2rem] overflow-hidden shadow-2xl border border-white/5 flex items-center justify-center min-h-[300px] lg:min-h-0">
                 <Cropper
                   src={imageToCrop}
                   style={{ height: "100%", width: "100%" }}
-                  initialAspect={aspect}
                   aspectRatio={aspect}
                   guides={true}
                   ref={cropperRef}
@@ -468,94 +454,115 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
                   minCanvasWidth={0}
                   minCanvasHeight={0}
                   dragMode="move"
-                  autoCropArea={1}
+                  autoCropArea={0.9}
                   checkOrientation={true}
                   responsive={true}
                   modal={true}
                   background={false}
                   zoom={(e) => {
-                    // Update state when zooming via wheel or pinch
                     if (e.detail.ratio) setZoom(e.detail.ratio);
                   }}
                 />
+                
+                {aspect === undefined && (
+                  <div className="absolute top-8 left-8 px-4 py-2 bg-black/60 backdrop-blur-xl rounded-sm border-l-2 border-teal-500 flex items-center gap-2 pointer-events-none z-10">
+                    <span className="text-[9px] font-bold text-white uppercase tracking-[0.2em]">Manual Precision</span>
+                  </div>
+                )}
               </div>
 
-              {/* Sidebar Controls */}
-              <div className="w-full lg:w-80 flex flex-col gap-4">
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-sm space-y-8">
-                  {/* Orientation Toggle */}
+              {/* Sidebar Controls - Narrower & Minimalist */}
+              <div className="w-full lg:w-[320px] flex flex-col gap-4 overflow-y-auto custom-scrollbar lg:pb-0">
+                <div className="bg-[#0f0f0f]/80 border border-white/5 rounded-2xl lg:rounded-[1.5rem] p-6 lg:p-8 backdrop-blur-2xl space-y-8 flex-shrink-0">
+                  {/* Format Logic */}
                   <div className="space-y-4">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Format</span>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-[0.2em] font-display">Canvas Ratio</span>
+                      <button 
+                        onClick={resetCropper}
+                        className="text-[9px] font-bold text-teal-500/60 hover:text-teal-500 uppercase transition-all"
+                      >
+                        Reset Default
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
                       <button 
                         onClick={toggleOrientation}
-                        className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group"
+                        className={cn(
+                          "flex items-center justify-between p-4 rounded-lg border transition-all text-[10px] font-bold uppercase tracking-widest",
+                          aspect !== undefined 
+                            ? "bg-teal-500/5 border-teal-500/20 text-teal-400" 
+                            : "bg-white/5 border-white/5 text-gray-500 hover:bg-white/10"
+                        )}
                       >
-                        <div className="w-8 h-6 border-2 border-white/20 group-hover:border-teal-500 rounded flex items-center justify-center transition-all">
-                          <div className="h-full w-0.5 bg-white/10" />
-                        </div>
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Landscape / Portrait</span>
+                        <span>Standard Certificate</span>
+                        <div className={cn(
+                          "w-4 h-3 border transition-all",
+                          aspect !== undefined ? "border-teal-400" : "border-white/20"
+                        )} />
                       </button>
+                      
                       <button 
                          onClick={() => setAspect(undefined)}
                          className={cn(
-                           "flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all",
+                           "flex items-center justify-between p-4 rounded-lg border transition-all text-[10px] font-bold uppercase tracking-widest",
                            aspect === undefined 
-                             ? "bg-teal-500/10 border-teal-500/30 text-teal-500" 
-                             : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10"
+                             ? "bg-teal-500/5 border-teal-500/20 text-teal-400" 
+                             : "bg-white/5 border-white/5 text-gray-500 hover:bg-white/10"
                          )}
                       >
-                        <Maximize2 size={24} className="mb-1" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Free Resize</span>
+                        <span>Free Transformation</span>
+                        <div className="w-4 h-4 border-2 border-dashed border-white/20" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Zoom Slider */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                      <span>Zoom / Scale</span>
-                      <span>{Math.round(zoom * 100)}%</span>
+                  {/* Range Controls */}
+                  <div className="space-y-8">
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-[0.2em]">
+                        <span className="text-gray-500">Magnification</span>
+                        <span className="text-white/60 font-mono italic">{Math.round(zoom * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        value={zoom}
+                        min={0.1}
+                        max={3}
+                        step={0.01}
+                        onChange={handleZoom}
+                        className="w-full h-[2px] bg-white/10 rounded-full appearance-none cursor-pointer accent-teal-500 hover:bg-white/15 transition-all"
+                      />
                     </div>
-                    <input
-                      type="range"
-                      value={zoom}
-                      min={0.1}
-                      max={3}
-                      step={0.1}
-                      onChange={handleZoom}
-                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-500"
-                    />
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-[0.2em]">
+                        <span className="text-gray-500">Rotation</span>
+                        <span className={cn("font-mono italic", straighten !== 0 ? "text-teal-400" : "text-white/60")}>{straighten}°</span>
+                      </div>
+                      <input
+                        type="range"
+                        value={straighten}
+                        min={-45}
+                        max={45}
+                        step={0.5}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setStraighten(val);
+                          cropperRef.current?.cropper.rotateTo(val);
+                        }}
+                        className="w-full h-[2px] bg-white/10 rounded-full appearance-none cursor-pointer accent-teal-500 hover:bg-white/15 transition-all"
+                      />
+                    </div>
                   </div>
 
-                  {/* Straighten Slider */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                      <span>Straighten</span>
-                      <span className={cn(straighten !== 0 && "text-teal-400")}>{straighten}°</span>
-                    </div>
-                    <input
-                      type="range"
-                      value={straighten}
-                      min={-45}
-                      max={45}
-                      step={0.5}
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setStraighten(val);
-                        cropperRef.current?.cropper.rotateTo(val);
-                      }}
-                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-500"
-                    />
-                  </div>
-
-                  {/* Transform Actions */}
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Actions Group - Text Only */}
+                  <div className="grid grid-cols-2 gap-2">
                     <button 
                       onClick={() => cropperRef.current?.cropper.rotate(-90)} 
-                      className="h-12 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white/60 transition-all gap-2"
+                      className="h-12 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center text-[9px] font-bold uppercase tracking-widest text-white/50 hover:text-white transition-all border border-white/5"
                     >
-                      <RotateCcw size={16} /> <span className="text-[9px] font-bold uppercase">Rotate</span>
+                      Rotate 90°
                     </button>
                     <button 
                       onClick={() => {
@@ -565,22 +572,29 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
                           cropper.scaleX(data.scaleX === 1 ? -1 : 1);
                         }
                       }} 
-                      className="h-12 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white/60 transition-all gap-2"
+                      className="h-12 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center text-[9px] font-bold uppercase tracking-widest text-white/50 hover:text-white transition-all border border-white/5"
                     >
-                      <FlipHorizontal size={16} /> <span className="text-[9px] font-bold uppercase">Flip</span>
+                      Reflect
                     </button>
                   </div>
 
-                  {/* Confirm Action */}
-                  <button 
-                    onClick={handleConfirmCrop}
-                    className="w-full h-14 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-2xl transition-all uppercase tracking-widest text-[11px] shadow-xl shadow-teal-500/20 flex items-center justify-center gap-3"
-                  >
-                    <Save size={18} /> Apply Crop & Save
-                  </button>
+                  {/* Primary Save Action - Impactful Typography */}
+                  <div className="pt-2">
+                    <button 
+                      onClick={handleConfirmCrop}
+                      disabled={uploading}
+                      className={cn(
+                        "w-full h-14 bg-teal-500 hover:bg-teal-400 text-[#0a0a0a] font-bold rounded-lg transition-all uppercase tracking-[0.3em] text-[10px] shadow-2xl flex items-center justify-center group active:scale-[0.98]",
+                        uploading && "opacity-50 cursor-wait"
+                      )}
+                    >
+                      {uploading ? "Applying Changes..." : "Apply Transformation"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+
           </motion.div>
         )}
       </AnimatePresence>
@@ -821,102 +835,119 @@ function Home() {
          </div>
       </section>
 
-      {/* Latest Works Carousel */}
+      {/* Project Section */}
       <section id="works" className="py-32 px-6 bg-white overflow-hidden scroll-mt-32">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-16 gap-6">
-            <div className="text-center md:text-left">
-              <h2 className="text-5xl font-display font-bold mb-4">Latest Works</h2>
-              <p className="text-gray-400">Perfect solution for digital experience</p>
-            </div>
-            
-            <div className="flex gap-4">
-               <button 
-                onClick={() => setCurrentProjectIndex(prev => (prev === 0 ? projects.length - 1 : prev - 1))}
-                className="w-12 h-12 rounded-full border border-gray-100 flex items-center justify-center text-gray-400 hover:text-teal-600 hover:border-teal-100 transition-all shadow-sm"
-               >
-                 <ChevronRight size={20} className="rotate-180" />
-               </button>
-               <button 
-                onClick={() => setCurrentProjectIndex(prev => (prev === projects.length - 1 ? 0 : prev + 1))}
-                className="w-12 h-12 rounded-full border border-gray-100 flex items-center justify-center text-gray-400 hover:text-teal-600 hover:border-teal-100 transition-all shadow-sm"
-               >
-                 <ChevronRight size={20} />
-               </button>
-            </div>
+          <div className="text-center mb-20">
+            <h2 className="text-5xl font-display font-bold mb-4">Latest Works</h2>
+            <p className="text-gray-400 font-medium">Digital strategies and software solutions</p>
           </div>
 
-          <div className="relative max-w-5xl mx-auto">
+          <div className="relative max-w-5xl mx-auto px-4 sm:px-0">
             <AnimatePresence mode="wait">
               {projects.length > 0 ? (
                 <motion.div 
                   key={projects[currentProjectIndex].id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.4 }}
-                  className="grid lg:grid-cols-2 gap-12 items-center"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="bg-white rounded-[2rem] sm:rounded-[3rem] overflow-hidden border border-gray-100 shadow-2xl flex flex-col items-stretch relative group"
                 >
-                  <div className="aspect-[4/5] sm:aspect-video lg:aspect-square bg-gray-50 rounded-[4rem] overflow-hidden relative border border-gray-100 shadow-2xl p-6 sm:p-12">
-                     <div className="absolute top-8 left-8 z-10">
-                        <div className="px-4 py-2 bg-teal-500 text-white rounded-full text-[10px] font-bold uppercase tracking-widest inline-block shadow-lg">
-                          Project {currentProjectIndex + 1} of {projects.length}
-                        </div>
-                     </div>
+                  {/* Hero Project Image Section */}
+                  <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] bg-[#f8f8f8] overflow-hidden flex items-center justify-center p-4 sm:p-8">
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/5 pointer-events-none" />
+                    
                     {projects[currentProjectIndex].imageUrl ? (
-                      <img src={projects[currentProjectIndex].imageUrl} alt={projects[currentProjectIndex].title} className="w-full h-full object-cover rounded-3xl" />
+                      <motion.img 
+                        initial={{ scale: 1.05, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.6 }}
+                        src={projects[currentProjectIndex].imageUrl} 
+                        alt={projects[currentProjectIndex].title} 
+                        className="w-full h-full object-contain shadow-2xl rounded-lg sm:rounded-2xl"
+                      />
                     ) : (
-                      <div className="w-full h-full bg-white rounded-3xl flex flex-col items-center justify-center text-gray-200">
-                         <Cpu size={80} className="mb-6 opacity-20" />
-                         <div className="text-sm font-bold uppercase tracking-widest opacity-20">No Image Preview</div>
+                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-200">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-gray-300">Project Visualization Missing</div>
                       </div>
                     )}
-                  </div>
 
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-4xl sm:text-6xl font-display font-bold mb-6 italic tracking-tight">{projects[currentProjectIndex].title}</h3>
-                      <p className="text-gray-500 text-lg leading-relaxed font-medium">{projects[currentProjectIndex].description}</p>
-                    </div>
-                    {projects[currentProjectIndex].techStack && (
-                      <div className="flex flex-wrap gap-2">
-                        {projects[currentProjectIndex].techStack.map(tech => (
-                          <span key={tech} className="text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-50 px-4 py-2 rounded-full border border-gray-100">{tech}</span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="pt-6">
-                      <a 
-                        href={projects[currentProjectIndex].liveUrl || "#"} 
-                        target="_blank" 
-                        rel="referrer"
-                        className="inline-flex items-center gap-3 bg-[#141414] text-white text-[10px] font-bold uppercase tracking-[0.2em] px-10 py-5 rounded-full hover:bg-teal-600 transition-all shadow-xl shadow-gray-200"
+                    {/* Navigation Overlays (Desktop) */}
+                    <div className="hidden lg:flex absolute inset-y-0 left-0 items-center justify-start px-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => setCurrentProjectIndex(prev => (prev === 0 ? projects.length - 1 : prev - 1))}
+                        className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-md shadow-xl flex items-center justify-center text-[#141414] hover:bg-teal-500 hover:text-white transition-all active:scale-95"
                       >
-                        Launch Project <ExternalLink size={14} />
-                      </a>
+                        <ChevronRight size={20} className="rotate-180" />
+                      </button>
+                    </div>
+                    <div className="hidden lg:flex absolute inset-y-0 right-0 items-center justify-end px-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => setCurrentProjectIndex(prev => (prev === projects.length - 1 ? 0 : prev + 1))}
+                        className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-md shadow-xl flex items-center justify-center text-[#141414] hover:bg-teal-500 hover:text-white transition-all active:scale-95"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Meta Info Section */}
+                  <div className="bg-white p-6 sm:p-10 border-t border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+                    <div className="max-w-2xl space-y-3">
+                      <h3 className="text-2xl sm:text-4xl font-bold tracking-tight">{projects[currentProjectIndex].title}</h3>
+                      <p className="text-gray-500 text-sm sm:text-base leading-relaxed font-medium">
+                        {projects[currentProjectIndex].description}
+                      </p>
+                      {projects[currentProjectIndex].techStack && (
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {projects[currentProjectIndex].techStack.map(tech => (
+                            <span key={tech} className="text-[8px] font-bold uppercase tracking-widest text-teal-600 bg-teal-50/50 px-3 py-1 rounded-full border border-teal-100/30">{tech}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 w-full lg:w-auto shrink-0 justify-between lg:justify-end">
+                      <div className="text-[10px] font-bold text-gray-200 uppercase tracking-widest sm:mr-4">
+                        {currentProjectIndex + 1} <span className="opacity-50">/</span> {projects.length}
+                      </div>
+
+                      <div className="flex gap-2">
+                        {projects[currentProjectIndex].liveUrl && (
+                          <a 
+                            href={projects[currentProjectIndex].liveUrl} 
+                            target="_blank" 
+                            rel="referrer"
+                            className="h-12 px-8 flex items-center justify-center bg-[#141414] text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full hover:bg-teal-600 transition-all shadow-xl active:scale-95"
+                          >
+                            Explore Site
+                          </a>
+                        )}
+                        <div className="flex lg:hidden gap-2">
+                          <button 
+                            onClick={() => setCurrentProjectIndex(prev => (prev === 0 ? projects.length - 1 : prev - 1))}
+                            className="w-12 h-12 rounded-full border border-gray-100 flex items-center justify-center text-gray-400 transition-all active:bg-gray-50"
+                          >
+                            <ChevronRight size={18} className="rotate-180" />
+                          </button>
+                          <button 
+                            onClick={() => setCurrentProjectIndex(prev => (prev === projects.length - 1 ? 0 : prev + 1))}
+                            className="w-12 h-12 rounded-full border border-[#141414] flex items-center justify-center text-[#141414] transition-all active:bg-gray-50"
+                          >
+                            <ChevronRight size={18} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
               ) : (
-                <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-[3rem] text-gray-300 font-medium h-[400px] flex items-center justify-center">
-                  No projects found. Add some in the Admin Panel!
+                <div className="py-20 text-center text-gray-300 font-medium">
+                  Portfolio archive loading...
                 </div>
               )}
             </AnimatePresence>
-            
-            {/* Carousel Indicators */}
-            <div className="flex justify-center gap-2 mt-16">
-              {projects.map((_, i) => (
-                <button 
-                  key={i} 
-                  onClick={() => setCurrentProjectIndex(i)}
-                  className={cn(
-                    "h-1 rounded-full transition-all duration-500",
-                    i === currentProjectIndex ? "w-8 bg-teal-500" : "w-2 bg-gray-100 hover:bg-gray-200"
-                  )}
-                />
-              ))}
-            </div>
           </div>
         </div>
       </section>
@@ -929,59 +960,89 @@ function Home() {
             <p className="text-gray-400 font-medium">Validating my expertise through global standards</p>
           </div>
 
-          <div className="relative max-w-4xl mx-auto">
+          <div className="relative max-w-5xl mx-auto px-4 sm:px-0">
              <AnimatePresence mode="wait">
               {certificates.length > 0 ? (
                 <motion.div 
                   key={certificates[currentCertIndex].id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-white p-8 sm:p-12 rounded-[4rem] border border-gray-100 shadow-2xl flex flex-col items-center text-center relative"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="bg-white rounded-[2rem] sm:rounded-[3rem] overflow-hidden border border-gray-100 shadow-2xl flex flex-col items-stretch relative group"
                 >
-                  <div className="w-20 h-20 bg-teal-50 rounded-3xl flex items-center justify-center text-teal-600 mb-8">
-                     <Settings size={40} />
-                  </div>
-                  
-                  <div className="space-y-4 mb-10">
-                    <h3 className="text-3xl sm:text-4xl font-display font-bold leading-tight">{certificates[currentCertIndex].title}</h3>
-                    <div className="text-teal-600 text-sm font-bold uppercase tracking-[0.3em]">{certificates[currentCertIndex].provider}</div>
-                    <div className="text-gray-300 text-[10px] font-bold uppercase tracking-widest">{certificates[currentCertIndex].issueDate || "Credential Active"}</div>
-                  </div>
-
-                  <div className="w-full aspect-video bg-gray-50 rounded-3xl overflow-hidden border border-gray-100 group mb-10">
+                  {/* Hero Certificate Image Section */}
+                  <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] bg-[#f8f8f8] overflow-hidden flex items-center justify-center p-4 sm:p-8">
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/5 pointer-events-none" />
+                    
                     {certificates[currentCertIndex].imageUrl ? (
-                      <img src={certificates[currentCertIndex].imageUrl} alt={certificates[currentCertIndex].title} className="w-full h-full object-cover transition-all duration-700 scale-105 group-hover:scale-100" />
+                      <motion.img 
+                        initial={{ scale: 1.05, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.6 }}
+                        src={certificates[currentCertIndex].imageUrl} 
+                        alt={certificates[currentCertIndex].title} 
+                        className="w-full h-full object-contain shadow-2xl rounded-lg sm:rounded-2xl"
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-200">
-                        <ExternalLink size={60} className="opacity-20" />
+                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-200">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-gray-300">Document Scan Missing</div>
                       </div>
                     )}
+
+                    {/* Navigation Overlays (Desktop) */}
+                    <div className="hidden lg:flex absolute inset-y-0 left-0 items-center justify-start px-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => setCurrentCertIndex(prev => (prev === 0 ? certificates.length - 1 : prev - 1))}
+                        className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-md shadow-xl flex items-center justify-center text-[#141414] hover:bg-teal-500 hover:text-white transition-all active:scale-95"
+                      >
+                        <ChevronRight size={20} className="rotate-180" />
+                      </button>
+                    </div>
+                    <div className="hidden lg:flex absolute inset-y-0 right-0 items-center justify-end px-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => setCurrentCertIndex(prev => (prev === certificates.length - 1 ? 0 : prev + 1))}
+                        className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-md shadow-xl flex items-center justify-center text-[#141414] hover:bg-teal-500 hover:text-white transition-all active:scale-95"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
                   </div>
                   
-                  <div className="flex gap-6">
-                    <button 
-                      onClick={() => setCurrentCertIndex(prev => (prev === 0 ? certificates.length - 1 : prev - 1))}
-                      className="p-4 rounded-2xl bg-gray-50 text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-all"
-                    >
-                      <ChevronRight size={20} className="rotate-180" />
-                    </button>
-                    <button 
-                      onClick={() => setCurrentCertIndex(prev => (prev === certificates.length - 1 ? 0 : prev + 1))}
-                      className="p-4 rounded-2xl bg-[#141414] text-white hover:bg-teal-600 transition-all"
-                    >
-                      <ChevronRight size={20} />
-                    </button>
-                  </div>
+                  {/* Minimal Meta Info Section */}
+                  <div className="bg-white p-6 sm:p-10 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                    <div className="space-y-1">
+                      <div className="text-[9px] font-bold text-teal-600 uppercase tracking-[0.3em] font-display mb-1">{certificates[currentCertIndex].provider}</div>
+                      <h3 className="text-xl sm:text-2xl font-bold italic tracking-tight">{certificates[currentCertIndex].title}</h3>
+                      <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest pt-1">{certificates[currentCertIndex].issueDate || "Credential verified • All rights reserved"}</div>
+                    </div>
 
-                  <div className="absolute top-12 right-12 text-[10px] font-bold text-gray-200 uppercase tracking-widest">
-                    {currentCertIndex + 1} / {certificates.length}
+                    {/* Mobile Controls / Status */}
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                      <div className="text-[10px] font-bold text-gray-200 uppercase tracking-widest mr-2">
+                        {currentCertIndex + 1} <span className="opacity-50">/</span> {certificates.length}
+                      </div>
+
+                      <div className="flex gap-2 lg:hidden">
+                        <button 
+                          onClick={() => setCurrentCertIndex(prev => (prev === 0 ? certificates.length - 1 : prev - 1))}
+                          className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center text-gray-400 transition-all active:bg-gray-50"
+                        >
+                          <ChevronRight size={18} className="rotate-180" />
+                        </button>
+                        <button 
+                          onClick={() => setCurrentCertIndex(prev => (prev === certificates.length - 1 ? 0 : prev + 1))}
+                          className="w-10 h-10 rounded-full border border-[#141414] flex items-center justify-center text-[#141414] transition-all active:bg-gray-50"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               ) : (
                 <div className="py-20 text-center border-2 border-dashed border-gray-200 rounded-[3rem] text-gray-300 font-medium italic">
-                  Certificates are being digitized. Please check back soon!
+                  Digital archive loading...
                 </div>
               )}
             </AnimatePresence>
@@ -1111,6 +1172,9 @@ function Admin() {
         setError("Popup was blocked by your browser. Please allow popups to sign in.");
       } else if (err.code === 'auth/unauthorized-domain') {
         setError("Domain not authorized. Copy the URL from your browser address bar and add it to 'Authorized Domains' in your Firebase Console (Authentication > Settings).");
+      } else if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+        // Safe to ignore or just clear error
+        setError(null);
       } else {
         setError(err.message || "Failed to sign in.");
       }
@@ -1487,7 +1551,7 @@ function AdminProjects() {
   return (
     <div className="space-y-6">
       <button 
-        onClick={() => setEditing({ title: "", description: "", order: projects.length, imageUrl: "", liveUrl: "", githubUrl: "", techStack: [] })}
+        onClick={() => setEditing({ title: "", description: "", order: projects.length, imageUrl: "", liveUrl: "", techStack: [] })}
         className="w-full py-6 border-2 border-dashed border-gray-100 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-[#141414] hover:border-gray-300 transition-all group"
       >
         <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-gray-100">
@@ -1529,18 +1593,12 @@ function AdminProjects() {
                   currentUrl={editing.imageUrl} 
                   onUpload={(url) => setEditing({...editing, imageUrl: url})} 
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <input 
                     placeholder="Live URL" 
                     className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-xs shadow-sm"
                     value={editing.liveUrl || ""}
                     onChange={e => setEditing({...editing, liveUrl: e.target.value})}
-                  />
-                  <input 
-                    placeholder="GitHub Repo" 
-                    className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-[#141414] transition-all text-xs shadow-sm"
-                    value={editing.githubUrl || ""}
-                    onChange={e => setEditing({...editing, githubUrl: e.target.value})}
                   />
                 </div>
               </div>
