@@ -296,12 +296,25 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
       return;
     }
 
+    setUploading(true);
+    
+    // Fallback if Cloudinary is not configured: Use Base64 encoding
     if (!isConfigured) {
-      alert("Cloudinary not configured. Go to Settings > Environment and add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.");
+      if (file.size > 800 * 1024) { // ~800KB limit for Firestore data safety
+        alert("Without Cloudinary, images must be under 800KB. Please configure Cloudinary in Settings > Env for unlimited sizes.");
+        setUploading(false);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onUpload(reader.result as string);
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
       return;
     }
 
-    setUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -338,17 +351,27 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
           onClick={() => setShowUrlInput(!showUrlInput)}
           className="text-[10px] font-bold text-teal-600 uppercase tracking-tight hover:opacity-70 transition-opacity"
         >
-          {showUrlInput ? "Use Upload" : "Enter URL"}
+          {showUrlInput ? "Use File Upload" : "Enter External URL"}
         </button>
       </div>
 
       {showUrlInput ? (
-        <input 
-          placeholder="https://example.com/image.jpg" 
-          className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-teal-500 transition-all shadow-sm text-xs"
-          value={currentUrl || ""}
-          onChange={e => onUpload(e.target.value)}
-        />
+        <div className="space-y-2">
+          <input 
+            placeholder="https://example.com/image.jpg" 
+            className="w-full bg-white px-4 py-3 rounded-xl outline-none border border-gray-100 focus:border-teal-500 transition-all shadow-sm text-xs"
+            value={currentUrl || ""}
+            onChange={e => onUpload(e.target.value)}
+          />
+          {currentUrl && (
+            <div className="flex items-center gap-3 p-3 bg-teal-50/30 rounded-xl border border-teal-100/50">
+              <div className="w-10 h-10 rounded-lg overflow-hidden border border-white shadow-sm shrink-0">
+                <img src={currentUrl} className="w-full h-full object-cover" />
+              </div>
+              <span className="text-[9px] text-teal-700 font-medium truncate flex-1">URL active and previewed</span>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 flex items-center gap-4">
@@ -357,14 +380,13 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
               className={cn(
                 "w-16 h-16 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all shrink-0",
                 uploading && "opacity-50 cursor-wait",
-                !isConfigured && "opacity-50 grayscale",
-                isConfigured && "hover:border-teal-500 hover:bg-teal-50"
+                !isConfigured ? "hover:border-blue-400 hover:bg-blue-50" : "hover:border-teal-500 hover:bg-teal-50"
               )}
             >
               {uploading ? (
                 <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
               ) : (
-                <Plus size={16} className="text-gray-400" />
+                <Plus size={16} className={cn(!isConfigured ? "text-blue-400" : "text-teal-500")} />
               )}
               <span className="text-[7px] font-bold uppercase text-gray-400">Pick</span>
             </div>
@@ -378,17 +400,25 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
             />
 
             <div className="flex-1 min-w-0">
-              {!isConfigured ? (
-                <p className="text-[9px] text-red-400 leading-tight">Config required in Settings &gt; Env</p>
-              ) : currentUrl ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 shrink-0">
+              {currentUrl ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm shrink-0">
                     <img src={currentUrl} className="w-full h-full object-cover" />
                   </div>
-                  <span className="text-[9px] text-gray-400 truncate font-mono flex-1">{currentUrl}</span>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold text-[#141414] truncate uppercase tracking-widest">Image Loaded</p>
+                    <p className="text-[8px] text-gray-300 truncate font-mono mt-0.5">{currentUrl.substring(0, 30)}...</p>
+                  </div>
                 </div>
               ) : (
-                <p className="text-[9px] text-gray-400 italic">No photo selected</p>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Artwork</p>
+                  <p className="text-[8px] text-gray-300 leading-tight">
+                    {!isConfigured 
+                      ? "Direct upload enabled (max 800KB)" 
+                      : "Cloudinary upload active"}
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -410,16 +440,20 @@ function Home() {
   const [currentCertIndex, setCurrentCertIndex] = useState(0);
 
   useEffect(() => {
-    const unsubProjects = onSnapshot(query(collection(db, "projects"), orderBy("order")), (snap) => {
-      setProjects(snap.docs.map(d => ({ id: d.id, ...d.data() } as Project)));
+    const unsubProjects = onSnapshot(collection(db, "projects"), (snap) => {
+      const p = snap.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+      setProjects(p.sort((a, b) => (a.order || 0) - (b.order || 0)));
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'projects'));
 
-    const unsubCerts = onSnapshot(query(collection(db, "certificates"), orderBy("issueDate", "desc")), (snap) => {
-      setCertificates(snap.docs.map(d => ({ id: d.id, ...d.data() } as Certificate)));
+    const unsubCerts = onSnapshot(collection(db, "certificates"), (snap) => {
+      const c = snap.docs.map(d => ({ id: d.id, ...d.data() } as Certificate));
+      // Sort by issueDate desc if it exists, otherwise use id as fallback
+      setCertificates(c.sort((a, b) => (b.issueDate || "").localeCompare(a.issueDate || "")));
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'certificates'));
 
-    const unsubExp = onSnapshot(query(collection(db, "experiences"), orderBy("order")), (snap) => {
-      setExperiences(snap.docs.map(d => ({ id: d.id, ...d.data() } as Experience)));
+    const unsubExp = onSnapshot(collection(db, "experiences"), (snap) => {
+      const e = snap.docs.map(d => ({ id: d.id, ...d.data() } as Experience));
+      setExperiences(e.sort((a, b) => (a.order || 0) - (b.order || 0)));
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'experiences'));
 
     const unsubSettings = onSnapshot(doc(db, "settings", "global"), (snap) => {
@@ -678,7 +712,7 @@ function Home() {
 
                   <div className="w-full aspect-video bg-gray-50 rounded-3xl overflow-hidden border border-gray-100 group mb-10">
                     {certificates[currentCertIndex].imageUrl ? (
-                      <img src={certificates[currentCertIndex].imageUrl} alt={certificates[currentCertIndex].title} className="w-full h-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0 scale-105 group-hover:scale-100" />
+                      <img src={certificates[currentCertIndex].imageUrl} alt={certificates[currentCertIndex].title} className="w-full h-full object-cover transition-all duration-700 scale-105 group-hover:scale-100" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-200">
                         <ExternalLink size={60} className="opacity-20" />
@@ -1073,8 +1107,9 @@ function AdminCertificates() {
   const [editing, setEditing] = useState<Partial<Certificate> | null>(null);
 
   useEffect(() => {
-    return onSnapshot(query(collection(db, "certificates"), orderBy("issueDate", "desc")), (snap) => {
-      setCerts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Certificate)));
+    return onSnapshot(collection(db, "certificates"), (snap) => {
+      const c = snap.docs.map(d => ({ id: d.id, ...d.data() } as Certificate));
+      setCerts(c.sort((a, b) => (b.issueDate || "").localeCompare(a.issueDate || "")));
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'certificates'));
   }, []);
 
@@ -1185,8 +1220,9 @@ function AdminProjects() {
   const [editing, setEditing] = useState<Partial<Project> | null>(null);
 
   useEffect(() => {
-    return onSnapshot(query(collection(db, "projects"), orderBy("order")), (snap) => {
-      setProjects(snap.docs.map(d => ({ id: d.id, ...d.data() } as Project)));
+    return onSnapshot(collection(db, "projects"), (snap) => {
+      const p = snap.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+      setProjects(p.sort((a, b) => (a.order || 0) - (b.order || 0)));
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'projects'));
   }, []);
 
@@ -1309,8 +1345,9 @@ function AdminExperience() {
   const [editing, setEditing] = useState<Partial<Experience> | null>(null);
 
   useEffect(() => {
-    return onSnapshot(query(collection(db, "experiences"), orderBy("order")), (snap) => {
-      setExperiences(snap.docs.map(d => ({ id: d.id, ...d.data() } as Experience)));
+    return onSnapshot(collection(db, "experiences"), (snap) => {
+      const e = snap.docs.map(d => ({ id: d.id, ...d.data() } as Experience));
+      setExperiences(e.sort((a, b) => (a.order || 0) - (b.order || 0)));
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'experiences'));
   }, []);
 
