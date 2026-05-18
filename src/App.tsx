@@ -26,8 +26,10 @@ import {
   LogIn,
   LogOut,
   Settings,
-  Cpu
+  Cpu,
+  Scissors
 } from "lucide-react";
+import Cropper, { Area, Point } from "react-easy-crop";
 import { cn, formatDate } from "./lib/utils";
 import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
 import { 
@@ -278,46 +280,139 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 // --- Helper Components ---
 
+/**
+ * Utility to create a cropped image from canvas
+ */
+const getCroppedImg = async (
+  imageSrc: string,
+  pixelCrop: Area,
+  rotation = 0,
+  flip = { horizontal: false, vertical: false }
+): Promise<Blob> => {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.addEventListener('load', () => resolve(img));
+    img.addEventListener('error', (error) => reject(error));
+    img.setAttribute('crossOrigin', 'anonymous');
+    img.src = imageSrc;
+  });
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('No 2d context');
+  }
+
+  const rotRad = (rotation * Math.PI) / 180;
+
+  // Calculate bounding box for rotated image
+  const { width: bBoxW, height: bBoxH } = {
+    width: Math.abs(Math.cos(rotRad) * image.width) + Math.abs(Math.sin(rotRad) * image.height),
+    height: Math.abs(Math.sin(rotRad) * image.width) + Math.abs(Math.cos(rotRad) * image.height),
+  };
+
+  // Set canvas size to match the bounding box
+  canvas.width = bBoxW;
+  canvas.height = bBoxH;
+
+  // Translate to center, rotate, then flip
+  ctx.translate(bBoxW / 2, bBoxH / 2);
+  ctx.rotate(rotRad);
+  ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
+  ctx.translate(-image.width / 2, -image.height / 2);
+
+  // Draw the image
+  ctx.drawImage(image, 0, 0);
+
+  // Extract the cropped portion
+  const data = ctx.getImageData(
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  // Reset canvas for the final cropped image
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  // Put the cropped image onto the reset canvas
+  ctx.putImageData(data, 0, 0);
+
+  // Return as a blob
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((file) => {
+      if (file) resolve(file);
+      else reject(new Error('Canvas is empty'));
+    }, 'image/jpeg');
+  });
+};
+
 function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) => void, currentUrl?: string, label: string }) {
   const [uploading, setUploading] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
   const isConfigured = !!(cloudName && uploadPreset);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onCropComplete = (croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert("Please select an image file.");
+    if (file.type && !file.type.startsWith('image/')) {
+      alert("The selected file doesn't seem to be an image. Please try a different photo.");
       return;
     }
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToCrop(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleConfirmCrop = async () => {
+    if (!imageToCrop || !croppedAreaPixels) return;
+
     setUploading(true);
+    const originalImage = imageToCrop;
+    setImageToCrop(null); // Close cropper UI
     
-    // Fallback if Cloudinary is not configured: Use Base64 encoding
-    if (!isConfigured) {
-      if (file.size > 800 * 1024) { // ~800KB limit for Firestore data safety
-        alert("Without Cloudinary, images must be under 800KB. Please configure Cloudinary in Settings > Env for unlimited sizes.");
-        setUploading(false);
+    try {
+      const croppedBlob = await getCroppedImg(originalImage, croppedAreaPixels);
+      const croppedFile = new File([croppedBlob], "cropped-image.jpg", { type: "image/jpeg" });
+
+      // Proceed with upload
+      if (!isConfigured) {
+        if (croppedFile.size > 800 * 1024) {
+          alert("Cropped image exceeds 800KB. Try a smaller crop or configure Cloudinary.");
+          setUploading(false);
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          onUpload(reader.result as string);
+          setUploading(false);
+        };
+        reader.readAsDataURL(croppedFile);
         return;
       }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        onUpload(reader.result as string);
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
-      return;
-    }
-
-    try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', croppedFile);
       formData.append('upload_preset', uploadPreset);
 
       const response = await fetch(
@@ -336,15 +431,73 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
       const data = await response.json();
       onUpload(data.secure_url);
     } catch (error: any) {
-      console.error("Upload error:", error);
-      alert(`Upload failed: ${error.message}`);
+      console.error("Cropping/Upload error:", error);
+      alert(`Operation failed: ${error.message}`);
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
+      {/* Cropper Modal Overlay */}
+      <AnimatePresence>
+        {imageToCrop && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 md:p-10"
+          >
+            <div className="relative w-full max-w-4xl aspect-square sm:aspect-video bg-[#141414] rounded-3xl overflow-hidden shadow-2xl border border-gray-800">
+              <Cropper
+                image={imageToCrop}
+                crop={crop}
+                zoom={zoom}
+                aspect={1} // Assuming 1:1 for now, but can be configured
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            
+            <div className="mt-8 flex flex-col items-center gap-6 w-full max-w-md">
+              <div className="w-full space-y-2">
+                <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                  <span>Zoom</span>
+                  <span>{Math.round(zoom * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                />
+              </div>
+
+              <div className="flex gap-4 w-full">
+                <button 
+                  onClick={() => setImageToCrop(null)}
+                  className="flex-1 px-8 py-4 bg-gray-800 text-gray-400 font-bold rounded-2xl hover:bg-gray-700 transition-all uppercase tracking-widest text-[10px]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleConfirmCrop}
+                  className="flex-1 px-8 py-4 bg-teal-500 text-white font-bold rounded-2xl hover:bg-teal-600 transition-all uppercase tracking-widest text-[10px] shadow-lg shadow-teal-500/20"
+                >
+                  Apply Crop
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex justify-between items-center px-1">
         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</label>
         <button 
@@ -386,15 +539,15 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
               {uploading ? (
                 <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
               ) : (
-                <Plus size={16} className={cn(!isConfigured ? "text-blue-400" : "text-teal-500")} />
+                <Scissors size={16} className={cn(!isConfigured ? "text-blue-400" : "text-teal-500")} />
               )}
-              <span className="text-[7px] font-bold uppercase text-gray-400">Pick</span>
+              <span className="text-[7px] font-bold uppercase text-gray-400">{uploading ? "..." : "Crop"}</span>
             </div>
             
             <input
               type="file"
               ref={fileInputRef}
-              onChange={handleFileChange}
+              onChange={handleFileSelect}
               className="hidden"
               accept="image/*"
             />
@@ -406,8 +559,8 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
                     <img src={currentUrl} className="w-full h-full object-cover" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[9px] font-bold text-[#141414] truncate uppercase tracking-widest">Image Loaded</p>
-                    <p className="text-[8px] text-gray-300 truncate font-mono mt-0.5">{currentUrl.substring(0, 30)}...</p>
+                    <p className="text-[9px] font-bold text-[#141414] truncate uppercase tracking-widest">Artwork Ready</p>
+                    <p className="text-[8px] text-gray-300 truncate font-mono mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">{currentUrl}</p>
                   </div>
                 </div>
               ) : (
