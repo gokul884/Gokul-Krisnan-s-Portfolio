@@ -36,7 +36,8 @@ import {
   RefreshCw,
   Maximize2
 } from "lucide-react";
-import Cropper, { Area, Point } from "react-easy-crop";
+import { Cropper, ReactCropperElement } from "react-cropper";
+import "cropperjs/dist/cropper.css";
 import { cn, formatDate } from "./lib/utils";
 import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
 import { 
@@ -287,111 +288,35 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 // --- Helper Components ---
 
-/**
- * Utility to create a cropped image from canvas
- */
-const getCroppedImg = async (
-  imageSrc: string,
-  pixelCrop: Area,
-  rotation = 0,
-  flip = { horizontal: false, vertical: false }
-): Promise<Blob> => {
-  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image();
-    img.addEventListener('load', () => resolve(img));
-    img.addEventListener('error', (error) => reject(error));
-    img.setAttribute('crossOrigin', 'anonymous');
-    img.src = imageSrc;
-  });
-
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    throw new Error('No 2d context');
-  }
-
-  const rotRad = (rotation * Math.PI) / 180;
-
-  // Calculate bounding box for rotated image
-  const { width: bBoxW, height: bBoxH } = {
-    width: Math.abs(Math.cos(rotRad) * image.width) + Math.abs(Math.sin(rotRad) * image.height),
-    height: Math.abs(Math.sin(rotRad) * image.width) + Math.abs(Math.cos(rotRad) * image.height),
-  };
-
-  // Set canvas size to match the bounding box
-  canvas.width = bBoxW;
-  canvas.height = bBoxH;
-
-  // Translate to center, rotate, then flip
-  ctx.translate(bBoxW / 2, bBoxH / 2);
-  ctx.rotate(rotRad);
-  ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
-  ctx.translate(-image.width / 2, -image.height / 2);
-
-  // Draw the image
-  ctx.drawImage(image, 0, 0);
-
-  // Extract the cropped portion
-  const data = ctx.getImageData(
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height
-  );
-
-  // Reset canvas for the final cropped image
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  // Put the cropped image onto the reset canvas
-  ctx.putImageData(data, 0, 0);
-
-  // Return as a blob
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((file) => {
-      if (file) resolve(file);
-      else reject(new Error('Canvas is empty'));
-    }, 'image/jpeg');
-  });
-};
-
 function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) => void, currentUrl?: string, label: string }) {
   const [uploading, setUploading] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
-  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+  const [straighten, setStraighten] = useState(0);
   const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [flip, setFlip] = useState({ horizontal: false, vertical: false });
-  const [aspect, setAspect] = useState<number | undefined>(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-  const [showGrid, setShowGrid] = useState(true);
+  const [aspect, setAspect] = useState<number | undefined>(undefined);
   
+  const cropperRef = React.useRef<ReactCropperElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const ASPECT_RATIOS = [
-    { label: 'Free', value: undefined },
-    { label: '1:1', value: 1 },
-    { label: '4:3', value: 4/3 },
-    { label: '16:9', value: 16/9 },
-    { label: 'A4', value: 1/1.414 },
-    { label: 'Cert', value: 1.414 },
-  ];
 
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
   const isConfigured = !!(cloudName && uploadPreset);
 
-  const onCropComplete = (croppedArea: Area, croppedAreaPixels: Area) => {
-    setCroppedAreaPixels(croppedAreaPixels);
+  const resetCropper = () => {
+    const cropper = cropperRef.current?.cropper;
+    if (cropper) {
+      cropper.reset();
+      setStraighten(0);
+      setZoom(1);
+      setAspect(undefined);
+    }
   };
 
-  const resetCropper = () => {
-    setZoom(1);
-    setRotation(0);
-    setFlip({ horizontal: false, vertical: false });
-    setAspect(1);
+  const handleZoom = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value);
+    setZoom(val);
+    cropperRef.current?.cropper.zoomTo(val);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -406,24 +331,46 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
     const reader = new FileReader();
     reader.onload = () => {
       setImageToCrop(reader.result as string);
-      resetCropper();
     };
     reader.readAsDataURL(file);
   };
 
   const toggleOrientation = () => {
-    if (aspect) setAspect(1 / aspect);
+    const cropper = cropperRef.current?.cropper;
+    if (cropper) {
+      const data = cropper.getData();
+      // If we have an aspect ratio, flip it. If not, just swap width/height in data for the selection box if possible?
+      // Better to just set aspect ratio if we want specific orientation
+      if (aspect) {
+        setAspect(1 / aspect);
+      } else {
+        // If free, maybe toggle a 3:4 / 4:3 default?
+        setAspect(0.75); // Start with portrait if free
+      }
+    }
   };
 
   const handleConfirmCrop = async () => {
-    if (!imageToCrop || !croppedAreaPixels) return;
+    const cropper = cropperRef.current?.cropper;
+    if (!cropper) return;
 
     setUploading(true);
-    const originalImage = imageToCrop;
     setImageToCrop(null); // Close cropper UI
     
     try {
-      const croppedBlob = await getCroppedImg(originalImage, croppedAreaPixels, rotation, flip);
+      const canvas = cropper.getCroppedCanvas({
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+      });
+
+      if (!canvas) throw new Error("Could not generate crop");
+
+      const croppedBlob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.9);
+      });
+
       const croppedFile = new File([croppedBlob], "cropped-image.jpg", { type: "image/jpeg" });
 
       // Proceed with upload
@@ -478,7 +425,7 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-[#0a0a0a]/95 backdrop-blur-md flex flex-col items-center justify-center p-4 md:p-8"
+            className="fixed inset-0 z-[1000] bg-[#0a0a0a]/98 backdrop-blur-md flex flex-col items-center justify-center p-4 md:p-8"
           >
             {/* Top Toolbar */}
             <div className="w-full max-w-5xl flex items-center justify-between mb-4 px-2">
@@ -487,112 +434,85 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
                   <Scissors size={20} className="text-teal-500" />
                 </div>
                 <div>
-                  <h3 className="text-white font-display font-bold text-sm tracking-widest uppercase">Advanced Cropper</h3>
-                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-tighter">Precise adjustment tool</p>
+                  <h3 className="text-white font-display font-medium text-sm tracking-widest uppercase">Professional Crop</h3>
+                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-tighter">Adjust your certificate scan</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setImageToCrop(null)}
-                className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full text-white transition-all border border-white/5"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                 <button 
+                  onClick={resetCropper}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-all border border-white/5 text-[10px] uppercase font-bold tracking-widest"
+                >
+                  <RefreshCw size={14} /> Reset
+                </button>
+                <button 
+                  onClick={() => setImageToCrop(null)}
+                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full text-white transition-all border border-white/5"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             <div className="relative w-full max-w-5xl flex flex-col lg:flex-row gap-6">
               {/* Main Cropper Stage */}
               <div className="relative flex-1 aspect-square md:aspect-[4/3] bg-black rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10">
                 <Cropper
-                  image={imageToCrop}
-                  crop={crop}
-                  zoom={zoom}
-                  rotation={rotation}
-                  aspect={aspect}
-                  showGrid={showGrid}
-                  onCropChange={setCrop}
-                  onCropComplete={onCropComplete}
-                  onZoomChange={setZoom}
-                  onRotationChange={setRotation}
+                  src={imageToCrop}
+                  style={{ height: "100%", width: "100%" }}
+                  initialAspect={aspect}
+                  aspectRatio={aspect}
+                  guides={true}
+                  ref={cropperRef}
+                  viewMode={1}
+                  minCanvasWidth={0}
+                  minCanvasHeight={0}
+                  dragMode="move"
+                  autoCropArea={1}
+                  checkOrientation={true}
+                  responsive={true}
+                  modal={true}
+                  background={false}
+                  zoom={(e) => {
+                    // Update state when zooming via wheel or pinch
+                    if (e.detail.ratio) setZoom(e.detail.ratio);
+                  }}
                 />
-                
-                {/* Visual Grid Toggle Overlay */}
-                <button 
-                  onClick={() => setShowGrid(!showGrid)}
-                  className={cn(
-                    "absolute bottom-6 right-6 w-10 h-10 rounded-full border flex items-center justify-center transition-all backdrop-blur-sm z-10",
-                    showGrid ? "bg-teal-500 border-teal-400 text-white shadow-lg shadow-teal-500/20" : "bg-black/20 border-white/20 text-white/60"
-                  )}
-                >
-                  <LayoutGrid size={18} />
-                </button>
               </div>
 
               {/* Sidebar Controls */}
               <div className="w-full lg:w-80 flex flex-col gap-4">
-                {/* Live Preview Card */}
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-5 backdrop-blur-sm overflow-hidden group">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live Preview</span>
-                    <button onClick={resetCropper} className="text-[10px] font-bold text-teal-500 uppercase flex items-center gap-1 hover:opacity-70 transition-all">
-                      <RefreshCw size={10} /> Reset
-                    </button>
-                  </div>
-                  <div className="aspect-video relative rounded-2xl overflow-hidden bg-black flex items-center justify-center border border-white/5 group-hover:border-teal-500/30 transition-all">
-                    {croppedAreaPixels && (
-                      <div className="absolute inset-0 opacity-80 group-hover:opacity-100 transition-opacity">
-                         {/* Simple CSS-based preview mockup since real-time full canvas redraw is expensive */}
-                         <div 
-                          className="w-full h-full bg-cover bg-center"
-                          style={{
-                             backgroundImage: `url(${imageToCrop})`,
-                             backgroundSize: `${100 / (croppedAreaPixels.width / (imageToCrop ? 100 : 1)) * zoom}%`,
-                             transform: `rotate(${rotation}deg) scaleX(${flip.horizontal ? -1 : 1}) scaleY(${flip.vertical ? -1 : 1})`
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                      </div>
-                    )}
-                    <div className="relative z-10 text-[9px] font-bold text-white/40 uppercase tracking-widest">Result</div>
-                  </div>
-                </div>
-
-                {/* Adjustment Controls */}
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-5 backdrop-blur-sm space-y-6">
-                  {/* Basic Transform */}
-                  <div className="grid grid-cols-4 gap-2">
-                    <button title="Rotate CCW" onClick={() => setRotation(r => r - 90)} className="h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white transition-all">
-                      <RotateCcw size={16} />
-                    </button>
-                    <button title="Rotate CW" onClick={() => setRotation(r => r + 90)} className="h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white transition-all">
-                      <RotateCw size={16} />
-                    </button>
-                    <button title="Flip Horizontal" onClick={() => setFlip(f => ({ ...f, horizontal: !f.horizontal }))} className="h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white transition-all">
-                      <FlipHorizontal size={16} />
-                    </button>
-                    <button title="Flip Vertical" onClick={() => setFlip(f => ({ ...f, vertical: !f.vertical }))} className="h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white transition-all">
-                      <FlipVertical size={16} />
-                    </button>
-                  </div>
-
-                  {/* Straighten Slider */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                      <span>Fine Straighten</span>
-                      <span className={cn(rotation % 360 !== 0 && "text-teal-400")}>{rotation}°</span>
+                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-sm space-y-8">
+                  {/* Orientation Toggle */}
+                  <div className="space-y-4">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Format</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={toggleOrientation}
+                        className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group"
+                      >
+                        <div className="w-8 h-6 border-2 border-white/20 group-hover:border-teal-500 rounded flex items-center justify-center transition-all">
+                          <div className="h-full w-0.5 bg-white/10" />
+                        </div>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Landscape / Portrait</span>
+                      </button>
+                      <button 
+                         onClick={() => setAspect(undefined)}
+                         className={cn(
+                           "flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all",
+                           aspect === undefined 
+                             ? "bg-teal-500/10 border-teal-500/30 text-teal-500" 
+                             : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10"
+                         )}
+                      >
+                        <Maximize2 size={24} className="mb-1" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Free Resize</span>
+                      </button>
                     </div>
-                    <input
-                      type="range"
-                      value={rotation}
-                      min={rotation - 45}
-                      max={rotation + 45}
-                      step={0.5}
-                      onChange={(e) => setRotation(Number(e.target.value))}
-                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-500"
-                    />
                   </div>
 
                   {/* Zoom Slider */}
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                       <span>Zoom / Scale</span>
                       <span>{Math.round(zoom * 100)}%</span>
@@ -600,48 +520,63 @@ function FileUpload({ onUpload, currentUrl, label }: { onUpload: (url: string) =
                     <input
                       type="range"
                       value={zoom}
-                      min={1}
+                      min={0.1}
                       max={3}
                       step={0.1}
-                      onChange={(e) => setZoom(Number(e.target.value))}
+                      onChange={handleZoom}
                       className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-500"
                     />
                   </div>
 
-                  {/* Aspect Ratios Bento Grid */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                       <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Aspect Ratio</span>
-                       <button 
-                        onClick={toggleOrientation}
-                        className="p-1 px-2 bg-teal-500/10 text-teal-500 rounded-lg text-[8px] font-bold uppercase transition-all hover:bg-teal-500 hover:text-white"
-                       >
-                         Swap Side
-                       </button>
+                  {/* Straighten Slider */}
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                      <span>Straighten</span>
+                      <span className={cn(straighten !== 0 && "text-teal-400")}>{straighten}°</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                       {ASPECT_RATIOS.map((r) => (
-                        <button
-                          key={r.label}
-                          onClick={() => setAspect(r.value)}
-                          className={cn(
-                            "py-2 rounded-xl text-[9px] font-bold uppercase tracking-tight transition-all border",
-                            aspect === r.value 
-                              ? "bg-teal-500 border-teal-400 text-white shadow-lg shadow-teal-500/20" 
-                              : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10"
-                          )}
-                        >
-                          {r.label}
-                        </button>
-                       ))}
-                    </div>
+                    <input
+                      type="range"
+                      value={straighten}
+                      min={-45}
+                      max={45}
+                      step={0.5}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setStraighten(val);
+                        cropperRef.current?.cropper.rotateTo(val);
+                      }}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                    />
                   </div>
 
+                  {/* Transform Actions */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => cropperRef.current?.cropper.rotate(-90)} 
+                      className="h-12 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white/60 transition-all gap-2"
+                    >
+                      <RotateCcw size={16} /> <span className="text-[9px] font-bold uppercase">Rotate</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const cropper = cropperRef.current?.cropper;
+                        if (cropper) {
+                          const data = cropper.getData();
+                          cropper.scaleX(data.scaleX === 1 ? -1 : 1);
+                        }
+                      }} 
+                      className="h-12 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-white/60 transition-all gap-2"
+                    >
+                      <FlipHorizontal size={16} /> <span className="text-[9px] font-bold uppercase">Flip</span>
+                    </button>
+                  </div>
+
+                  {/* Confirm Action */}
                   <button 
                     onClick={handleConfirmCrop}
                     className="w-full h-14 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-2xl transition-all uppercase tracking-widest text-[11px] shadow-xl shadow-teal-500/20 flex items-center justify-center gap-3"
                   >
-                    <Maximize2 size={18} /> Apply Changes
+                    <Save size={18} /> Apply Crop & Save
                   </button>
                 </div>
               </div>
