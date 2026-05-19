@@ -4,7 +4,7 @@
  */
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -122,6 +122,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
 function Nav() {
   const [activeSection, setActiveSection] = useState('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isUpdatingRef = useRef(false);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const location = useLocation();
   const isAdminPage = location.pathname === '/admin';
@@ -138,11 +139,13 @@ function Nav() {
 
     const observerOptions = {
       root: null,
-      rootMargin: '-5% 0px -90% 0px', // focused strip near top
+      rootMargin: '-20% 0px -20% 0px', 
       threshold: 0
     };
 
     const observer = new IntersectionObserver((entries) => {
+      if (isUpdatingRef.current) return;
+      
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           setActiveSection(entry.target.id);
@@ -163,12 +166,25 @@ function Nav() {
     e.preventDefault();
     const element = document.getElementById(id);
     if (element) {
+      isUpdatingRef.current = true;
+      const offset = 100;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = element.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
       window.scrollTo({
-        top: element.offsetTop - 100, // adjust for nav height
+        top: offsetPosition,
         behavior: "smooth"
       });
+      
       setActiveSection(id);
       setIsMenuOpen(false);
+      
+      // Unlock after scroll finishes (approximate duration)
+      setTimeout(() => {
+        isUpdatingRef.current = false;
+      }, 1000);
     }
   };
 
@@ -211,7 +227,6 @@ function Nav() {
       {/* Desktop Island Nav */}
       <div className="hidden md:flex fixed top-6 left-0 right-0 z-[100] justify-center px-4 pointer-events-none">
         <motion.nav
-          layout
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
           className="bg-white/95 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] pointer-events-auto border border-gray-100 rounded-full p-1.5 flex items-center gap-1"
         >
